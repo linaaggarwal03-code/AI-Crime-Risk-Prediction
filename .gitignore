@@ -1,0 +1,8 @@
+data/*.csv
+*.csv
+__pycache__/
+*.pyc
+.venv/
+AI-Crime-Risk-PredictiOn/
+.env
+.ipynb_checkpoints/
