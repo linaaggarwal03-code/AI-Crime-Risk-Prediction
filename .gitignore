@@ -1,8 +1,28 @@
+# Data
 data/*.csv
 *.csv
+!outputs/*.csv
+
+# Python
 __pycache__/
 *.pyc
 .venv/
-AI-Crime-Risk-PredictiOn/
 .env
-.ipynb_checkpoints/
+.ipynb_checkpoints/
+.pytest_cache/
+
+# Databases
+database/*.db
+*.db
+*.sqlite3
+
+# Node / Next.js
+node_modules/
+frontend/node_modules/
+frontend/.next/
+frontend/.vercel/
+frontend/*.tsbuildinfo
+
+# OS
+.DS_Store
+Thumbs.db
