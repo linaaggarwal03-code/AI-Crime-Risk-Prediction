@@ -1,8 +1,11 @@
 data/*.csv
 *.csv
+data/processed/
+*.parquet
 __pycache__/
 *.pyc
 .venv/
 AI-Crime-Risk-PredictiOn/
 .env
-.ipynb_checkpoints/
+.ipynb_checkpoints/
+
