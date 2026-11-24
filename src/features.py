@@ -5,7 +5,7 @@ autoregressive lags, strictly past-only rolling statistics, and cross-area spati
 """
 
 from datetime import date, timedelta
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Set, Tuple, Any, Optional
 import numpy as np
 import pandas as pd
 
@@ -196,6 +196,7 @@ def compute_training_risk_thresholds(train_df: pd.DataFrame) -> Dict[str, float]
 def assign_risk_tiers(df: pd.DataFrame, thresholds: Dict[str, float]) -> pd.DataFrame:
     """
     Applies fixed training-derived thresholds to assign discrete risk tiers.
+    Preserved for 3-tier backward compatibility ('Low', 'Normal', 'High').
     """
     out = df.copy()
     q25 = thresholds['low_threshold_q25']
@@ -212,3 +213,117 @@ def assign_risk_tiers(df: pd.DataFrame, thresholds: Dict[str, float]) -> pd.Data
     out['risk_level'] = out['crime_count'].apply(_tier)
     out['is_high_risk'] = (out['crime_count'] >= q75).astype(int)
     return out
+
+
+FOUR_TIER_RISK_CATEGORIES = ['Low', 'Moderate', 'High', 'Very High']
+
+
+def classify_risk_categories(
+    values: Any,
+    thresholds: Dict[str, float]
+) -> Any:
+    """
+    Classifies continuous crime counts or predictions into four risk tiers:
+    - Low:        value <= Q1
+    - Moderate:   Q1 < value <= Q2
+    - High:       Q2 < value <= Q3
+    - Very High:  value > Q3
+
+    Derived from frozen training-set quartiles (Q1=25th, Q2=median, Q3=75th percentile).
+    Supports scalar (float/int), 1D NumPy array, and pandas Series inputs.
+
+    Parameters:
+        values: Continuous predicted or actual crime count(s). Must be non-negative.
+        thresholds: Dictionary containing quantile cutoffs. Accepts:
+                    'low_threshold_q25' (or 'q25'),
+                    'median_threshold_q50' (or 'q50'),
+                    'high_threshold_q75' (or 'q75').
+
+    Returns:
+        Categorical risk label(s) matching input format:
+        - Scalar input -> str ('Low', 'Moderate', 'High', or 'Very High')
+        - NumPy ndarray input -> 1D np.ndarray of strings
+        - pandas Series input -> pd.Series of strings with preserved index
+    """
+    # 1. Resolve thresholds
+    q1 = thresholds.get('low_threshold_q25', thresholds.get('q25'))
+    q2 = thresholds.get('median_threshold_q50', thresholds.get('q50'))
+    q3 = thresholds.get('high_threshold_q75', thresholds.get('q75'))
+
+    if q1 is None or q2 is None or q3 is None:
+        raise KeyError(
+            "Thresholds dictionary must contain 'low_threshold_q25' (or 'q25'), "
+            "'median_threshold_q50' (or 'q50'), and 'high_threshold_q75' (or 'q75')."
+        )
+
+    if not (q1 <= q2 <= q3):
+        raise ValueError(
+            f"Thresholds must be monotonically non-decreasing: Q1={q1}, Q2={q2}, Q3={q3}."
+        )
+
+    def _classify_scalar(val: float) -> str:
+        if not isinstance(val, (int, float, np.number)):
+            raise TypeError(f"Invalid input type: {type(val)}. Expected numeric.")
+        if np.isnan(val):
+            raise ValueError("Input value cannot be NaN/null.")
+        if val < 0.0:
+            raise ValueError(
+                f"Crime count predictions must be non-negative. Received negative value: {val}"
+            )
+        if val <= q1:
+            return 'Low'
+        elif val <= q2:
+            return 'Moderate'
+        elif val <= q3:
+            return 'High'
+        else:
+            return 'Very High'
+
+    # 2. Handle pandas Series
+    if isinstance(values, pd.Series):
+        if not pd.api.types.is_numeric_dtype(values):
+            raise TypeError("Input pandas Series must contain numeric values.")
+        if values.isna().any():
+            raise ValueError("Input Series contains NaN/null values.")
+        if (values < 0.0).any():
+            neg_sample = float(values[values < 0.0].iloc[0])
+            raise ValueError(
+                f"Crime count predictions must be non-negative. Received negative value: {neg_sample}"
+            )
+        return values.apply(_classify_scalar)
+
+    # 3. Handle NumPy ndarray
+    if isinstance(values, np.ndarray):
+        if not np.issubdtype(values.dtype, np.number):
+            raise TypeError("Input NumPy array must be of numeric dtype.")
+        if np.isnan(values).any():
+            raise ValueError("Input NumPy array contains NaN/null values.")
+        if (values < 0.0).any():
+            neg_sample = float(values[values < 0.0].flat[0])
+            raise ValueError(
+                f"Crime count predictions must be non-negative. Received negative value: {neg_sample}"
+            )
+        condlist = [
+            values <= q1,
+            (values > q1) & (values <= q2),
+            (values > q2) & (values <= q3),
+            values > q3,
+        ]
+        choicelist = ['Low', 'Moderate', 'High', 'Very High']
+        return np.select(condlist, choicelist, default='Very High')
+
+    # 4. Handle Python scalar (int / float / np.number)
+    if isinstance(values, (int, float, np.number)):
+        return _classify_scalar(values)
+
+    # 5. Handle Python list or tuple
+    if isinstance(values, (list, tuple)):
+        if len(values) == 0:
+            return []
+        arr = np.asarray(values)
+        classified_arr = classify_risk_categories(arr, thresholds)
+        return classified_arr.tolist()
+
+    raise TypeError(
+        f"Unsupported input type '{type(values)}'. Expected scalar (int/float), np.ndarray, or pd.Series."
+    )
