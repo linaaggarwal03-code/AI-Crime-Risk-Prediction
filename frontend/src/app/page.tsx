@@ -24,7 +24,7 @@ import {
   RefreshCw,
   Search,
   ExternalLink,
-  Info,
+  ArrowRight,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -41,14 +41,14 @@ import {
 
 import analysisData from "../data/analysisData.json";
 
-// Dynamically import CrimeMap — client-only with smooth fallback
+// Dynamically import CrimeMap with fallback
 const CrimeMap = dynamic(() => import("../components/CrimeMap"), {
   ssr: false,
   loading: () => (
-    <div className="w-full h-full min-h-[420px] flex flex-col items-center justify-center gap-3 text-sky-600 bg-sky-50/50 rounded-2xl border border-sky-200">
-      <RefreshCw className="w-6 h-6 animate-spin text-sky-500" />
+    <div className="w-full h-full min-h-[460px] flex flex-col items-center justify-center gap-3 bg-sky-50/50 rounded-2xl border border-sky-200">
+      <RefreshCw className="w-6 h-6 animate-spin text-sky-600" />
       <span className="text-xs font-semibold text-slate-600">
-        Mounting Leaflet GIS Engine…
+        Loading Interactive Chicago Map…
       </span>
     </div>
   ),
@@ -59,7 +59,7 @@ export default function DashboardPage() {
     "dashboard" | "map" | "hotspots" | "analytics" | "prediction" | "methodology"
   >("dashboard");
 
-  // Map and filter states
+  // Map & filter states
   const [selectedCluster, setSelectedCluster] = useState<any>(null);
   const [clusterFilter, setClusterFilter] = useState<number | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string>("");
@@ -99,7 +99,6 @@ export default function DashboardPage() {
       .catch(() => {});
   };
 
-  // Initial check on backend health
   useEffect(() => {
     fetch("http://localhost:8000/health")
       .then((r) => {
@@ -129,7 +128,6 @@ export default function DashboardPage() {
       .finally(() => setLoadingMapIncidents(false));
   }, [activeTab, backendOnline, clusterFilter, categoryFilter, timeWindowFilter]);
 
-  // Handle spatial proximity evaluation
   const handlePredict = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsPredicting(true);
@@ -153,7 +151,7 @@ export default function DashboardPage() {
         return;
       }
     } catch {
-      // Local fallback calculation if backend is disconnected
+      // Local fallback calculation if backend disconnected
     }
 
     let nearestC = clusters[0];
@@ -185,21 +183,20 @@ export default function DashboardPage() {
       provisional_spatial_risk_tier: tier,
       model_integration_status: "PENDING_LINA_SUPERVISED_MODEL_EXPORT",
       disclaimer:
-        "Notice: This is a geometric proximity calculation relative to historical DBSCAN clusters. Final supervised classification and count forecasting are pending Member 1's (Lina) model testing. This does NOT represent a confirmed future crime forecast.",
+        "Notice: This is a geometric proximity calculation relative to historical DBSCAN clusters. Final supervised classification and count forecasting are pending Member 1's (Lina) model testing.",
     });
     setIsPredicting(false);
   };
 
   const navItems = [
-    { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { id: "map", label: "Crime Map", icon: MapPin },
+    { id: "dashboard", label: "Dashboard Overview", icon: LayoutDashboard },
+    { id: "map", label: "Interactive Crime Map", icon: MapPin },
     { id: "hotspots", label: "Hotspot Analysis", icon: Flame },
-    { id: "analytics", label: "Analytics", icon: BarChart3 },
-    { id: "prediction", label: "Risk Prediction", icon: ShieldAlert },
+    { id: "analytics", label: "Analytics & Trends", icon: BarChart3 },
+    { id: "prediction", label: "Risk Assessment", icon: ShieldAlert },
     { id: "methodology", label: "Methodology", icon: BookOpen },
   ];
 
-  // Filter clusters for search query in Hotspots tab
   const filteredClusters = clusters.filter((c: any) => {
     if (!clusterSearchQuery) return true;
     const q = clusterSearchQuery.toLowerCase();
@@ -211,22 +208,22 @@ export default function DashboardPage() {
   });
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#f0f4f9] text-[#0f172a] font-sans">
-      {/* ─── SIDEBAR: CRISP CLOUDY WHITE ─────────────────────── */}
-      <aside className="w-64 flex-shrink-0 flex flex-col justify-between p-5 bg-white border-r border-slate-200 z-20 shadow-sm">
+    <div className="flex h-screen w-screen overflow-hidden bg-[#f4f7fa] text-[#0f172a] font-sans">
+      {/* ─── SIDEBAR: CLEAN CLOUDY WHITE ─────────────────────── */}
+      <aside className="w-64 flex-shrink-0 flex flex-col justify-between p-6 bg-white border-r border-slate-200 z-20 shadow-sm">
         <div>
-          {/* Logo & Project Tag */}
-          <div className="flex items-center gap-3 pb-6 mb-6 border-b border-slate-200">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-500 to-sky-600 flex items-center justify-center shadow-md shadow-sky-500/20">
-              <ShieldAlert className="w-5 h-5 text-white" />
+          {/* Logo & Platform Title */}
+          <div className="flex items-center gap-3 pb-6 mb-6 border-b border-slate-100">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-500 to-sky-600 flex items-center justify-center shadow-md shadow-sky-500/20 text-white">
+              <ShieldAlert className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="font-extrabold text-sm tracking-tight text-slate-900 flex items-center gap-1.5">
+              <h1 className="font-extrabold text-sm tracking-tight text-slate-900">
                 Urban Crime AI
               </h1>
-              <span className="text-[11px] text-sky-600 font-bold">
+              <p className="text-[11px] text-sky-600 font-bold uppercase tracking-wider">
                 Spatial Intelligence
-              </span>
+              </p>
             </div>
           </div>
 
@@ -238,10 +235,10 @@ export default function DashboardPage() {
                 <button
                   key={id}
                   onClick={() => setActiveTab(id as any)}
-                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                  className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-xs font-bold transition-all ${
                     active
-                      ? "bg-sky-50 text-sky-700 font-bold border border-sky-200 shadow-sm"
-                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                      ? "bg-sky-50 text-sky-700 border border-sky-200 shadow-sm"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
                   }`}
                 >
                   <Icon
@@ -257,7 +254,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Footer Meta / Project Badge */}
-        <div className="pt-4 border-t border-slate-200 space-y-3">
+        <div className="pt-4 border-t border-slate-100 space-y-3">
           <div className="flex items-center justify-between text-xs">
             <span className="text-slate-500 font-medium">Backend Engine</span>
             <span
@@ -274,30 +271,30 @@ export default function DashboardPage() {
             </span>
           </div>
 
-          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-[11px] space-y-1">
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-[11px] space-y-1">
             <div className="flex justify-between">
               <span className="text-slate-500">Author:</span>
               <span className="font-bold text-slate-800">Aditi Verma</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-500">Phase:</span>
-              <span className="text-sky-600 font-bold">Milestone 3 (Completed)</span>
+              <span className="text-slate-500">Deliverable:</span>
+              <span className="text-sky-600 font-bold">Milestone 3</span>
             </div>
           </div>
         </div>
       </aside>
 
-      {/* ─── MAIN CONTENT AREA ───────────────────────────────── */}
-      <main className="flex-1 flex flex-col h-full overflow-hidden bg-[#f0f4f9]">
-        {/* Top Header Bar */}
-        <header className="h-16 flex-shrink-0 px-8 flex items-center justify-between border-b border-slate-200 bg-white/90 backdrop-blur-md z-10 shadow-sm">
+      {/* ─── MAIN CONTENT VIEWPORT ───────────────────────────── */}
+      <main className="flex-1 flex flex-col h-full overflow-hidden bg-[#f4f7fa]">
+        {/* Modern Clean Header */}
+        <header className="h-16 flex-shrink-0 px-8 flex items-center justify-between border-b border-slate-200 bg-white shadow-sm z-10">
           <div className="flex items-center gap-3">
-            <h2 className="text-sm font-extrabold tracking-tight text-slate-900 capitalize">
-              {activeTab === "dashboard" && "Executive Spatial Intelligence Dashboard"}
-              {activeTab === "map" && "Geographic Distribution & Density Explorer"}
+            <h2 className="text-base font-extrabold tracking-tight text-slate-900 capitalize">
+              {activeTab === "dashboard" && "Executive Spatial Intelligence"}
+              {activeTab === "map" && "Interactive Chicago Crime Map"}
               {activeTab === "hotspots" && "DBSCAN Crime Hotspot Analysis"}
-              {activeTab === "analytics" && "Urban Crime Statistical & Temporal Analytics"}
-              {activeTab === "prediction" && "Provisional Spatial Risk Evaluation"}
+              {activeTab === "analytics" && "Urban Crime Statistical & Temporal Trends"}
+              {activeTab === "prediction" && "Location Spatial Risk Assessment"}
               {activeTab === "methodology" && "Methodology & Ethical Safeguards"}
             </h2>
             <span className="pill-sky hidden sm:inline-flex">
@@ -308,293 +305,215 @@ export default function DashboardPage() {
           <div className="flex items-center gap-3 text-xs">
             <span className="pill-cloudy">
               <Database className="w-3.5 h-3.5 text-sky-600" />
-              <span className="font-bold">{kpis.total_records_analyzed.toLocaleString()} records</span>
+              <span className="font-bold">{kpis.total_records_analyzed.toLocaleString()} Incidents</span>
             </span>
             <span className="pill-red">
               <Flame className="w-3.5 h-3.5 text-red-600" />
-              <span className="font-bold">{kpis.num_clusters_identified} clusters</span>
+              <span className="font-bold">{kpis.num_clusters_identified} Hotspot Zones</span>
             </span>
           </div>
         </header>
 
-        {/* Content Pane */}
+        {/* Scrollable Content Body */}
         <div className="flex-1 overflow-y-auto p-8">
-          {/* ════════════════ TAB 1: DASHBOARD ════════════════ */}
+          {/* ════════════════ TAB 1: DASHBOARD (UNCROWDED & SPACIOUS) ════════════════ */}
           {activeTab === "dashboard" && (
-            <div className="max-w-7xl mx-auto space-y-7 pb-10">
-              {/* 4 Spacious KPI Cards */}
+            <div className="max-w-6xl mx-auto space-y-8 pb-12">
+              {/* Executive Welcome & Key Metrics */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                <div className="cloud-card p-5 space-y-2">
+                <div className="cloud-card p-6 space-y-2">
                   <div className="flex items-center justify-between text-slate-500">
                     <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                      Validated Incidents
+                      Total Analyzed Crimes
                     </span>
-                    <span className="p-2 rounded-lg bg-sky-100 text-sky-600">
+                    <span className="p-2.5 rounded-xl bg-sky-100 text-sky-600">
                       <Database className="w-4 h-4" />
                     </span>
                   </div>
                   <div className="text-3xl font-extrabold text-slate-900 tracking-tight">
                     {kpis.total_records_analyzed.toLocaleString()}
                   </div>
-                  <div className="text-xs text-emerald-600 flex items-center gap-1.5 font-bold">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    99.84% Geographic completeness
-                  </div>
+                  <p className="text-xs text-emerald-600 font-bold flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> 99.84% Geographic Accuracy
+                  </p>
                 </div>
 
-                <div className="cloud-card p-5 space-y-2">
+                <div className="cloud-card p-6 space-y-2">
                   <div className="flex items-center justify-between text-slate-500">
                     <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                      Detected Hotspots
+                      Identified Hotspots
                     </span>
-                    <span className="p-2 rounded-lg bg-red-100 text-red-600">
+                    <span className="p-2.5 rounded-xl bg-red-100 text-red-600">
                       <Flame className="w-4 h-4" />
                     </span>
                   </div>
-                  <div className="text-3xl font-extrabold text-slate-900 tracking-tight">
+                  <div className="text-3xl font-extrabold text-red-600 tracking-tight">
                     {kpis.num_clusters_identified}
                   </div>
-                  <div className="text-xs text-slate-500 font-medium">
-                    Radius &epsilon;={params.eps_meters}m &middot; min_pts={params.min_samples}
-                  </div>
+                  <p className="text-xs text-slate-500 font-medium">
+                    Radius &epsilon;=500m &middot; min_pts=50
+                  </p>
                 </div>
 
-                <div className="cloud-card p-5 space-y-2">
+                <div className="cloud-card p-6 space-y-2">
                   <div className="flex items-center justify-between text-slate-500">
                     <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                      Clustered Density
+                      Cluster Crime Share
                     </span>
-                    <span className="p-2 rounded-lg bg-sky-100 text-sky-600">
+                    <span className="p-2.5 rounded-xl bg-sky-100 text-sky-600">
                       <Layers className="w-4 h-4" />
                     </span>
                   </div>
                   <div className="text-3xl font-extrabold text-sky-600 tracking-tight">
                     {kpis.clustered_percentage}%
                   </div>
-                  <div className="text-xs text-slate-500 font-medium">
+                  <p className="text-xs text-slate-500 font-medium">
                     {kpis.clustered_incidents.toLocaleString()} crimes inside hotspots
-                  </div>
+                  </p>
                 </div>
 
-                <div className="cloud-card p-5 space-y-2">
+                <div className="cloud-card p-6 space-y-2">
                   <div className="flex items-center justify-between text-slate-500">
                     <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                      Dispersed Noise
+                      Dispersed Incidents
                     </span>
-                    <span className="p-2 rounded-lg bg-amber-100 text-amber-600">
+                    <span className="p-2.5 rounded-xl bg-amber-100 text-amber-600">
                       <Compass className="w-4 h-4" />
                     </span>
                   </div>
                   <div className="text-3xl font-extrabold text-amber-600 tracking-tight">
                     {kpis.noise_percentage}%
                   </div>
-                  <div className="text-xs text-slate-500 font-medium">
+                  <p className="text-xs text-slate-500 font-medium">
                     {kpis.noise_incidents.toLocaleString()} isolated baseline points
-                  </div>
-                </div>
-              </div>
-
-              {/* Main Featured Row: Map Preview + Top 5 Clusters */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Map Preview Card */}
-                <div className="lg:col-span-2 cloud-card p-6 flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <h3 className="text-base font-bold text-slate-900">
-                          Spatial Hotspot Distribution
-                        </h3>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                          High-density clusters detected via DBSCAN Haversine metric
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => setActiveTab("map")}
-                        className="px-3.5 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-sm"
-                      >
-                        Full Interactive Map <ChevronRight className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-
-                    <div className="rounded-xl overflow-hidden border border-slate-200 h-[420px] w-full">
-                      <CrimeMap
-                        clusters={clusters}
-                        filterClusterId={clusterFilter}
-                        onSelectCluster={setSelectedCluster}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-                    <span>* Use the Dark/Light toggle on the map to switch styles</span>
-                    <span className="text-sky-700 font-mono font-medium">Chicago Envelope: 41.64°N - 42.02°N</span>
-                  </div>
-                </div>
-
-                {/* Top Hotspots List */}
-                <div className="cloud-card p-6 flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <h3 className="text-base font-bold text-slate-900">
-                          Top Hotspots
-                        </h3>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                          Highest historical concentration
-                        </p>
-                      </div>
-                      <span className="pill-red">High Density</span>
-                    </div>
-
-                    <div className="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
-                      {clusters.slice(0, 5).map((c: any) => (
-                        <div
-                          key={c.cluster_id}
-                          onClick={() => {
-                            setClusterFilter(
-                              clusterFilter === c.cluster_id ? null : c.cluster_id
-                            );
-                            setSelectedCluster(c);
-                          }}
-                          className={`p-3.5 rounded-xl border text-xs cursor-pointer transition-all ${
-                            clusterFilter === c.cluster_id
-                              ? "bg-sky-50 border-sky-400 shadow-sm"
-                              : "bg-slate-50 border-slate-200 hover:border-sky-300"
-                          }`}
-                        >
-                          <div className="flex items-center justify-between mb-1.5">
-                            <span className="font-bold text-slate-800">
-                              Cluster #{c.cluster_id} &middot; Area {c.dominant_community_area}
-                            </span>
-                            <span className="pill-red font-mono font-bold">
-                              {c.incident_count.toLocaleString()} pts
-                            </span>
-                          </div>
-                          <div className="flex items-center justify-between text-slate-600 text-[11px]">
-                            <span>Primary: {c.primary_crime_type}</span>
-                            <span className="font-mono text-sky-700 font-bold">{c.percentage_of_total}% share</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <p className="text-[11px] text-slate-500 pt-3 border-t border-slate-100">
-                    Click any cluster card to isolate it on the map.
                   </p>
                 </div>
               </div>
 
-              {/* Bottom 2-Column Summary: Categories & Areas */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="cloud-card p-6 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-sm font-bold text-slate-900">
-                        Top Crime Classifications
-                      </h3>
-                      <p className="text-xs text-slate-500">
-                        Historical incident count across Chicago
-                      </p>
-                    </div>
-                    <span className="pill-sky">Offense Types</span>
+              {/* The Hero Centerpiece: Crime Hotspot Map */}
+              <div className="cloud-card p-6 space-y-4">
+                <div className="flex items-center justify-between flex-wrap gap-4 pb-2 border-b border-slate-100">
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                      <MapPin className="w-5 h-5 text-sky-600" />
+                      Chicago Crime Hotspot Distribution
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      High-density geospatial clusters identified via DBSCAN Haversine distance metric
+                    </p>
                   </div>
 
-                  <div className="space-y-3 pt-1">
-                    {Object.entries(eda.categories.top_10)
-                      .slice(0, 5)
-                      .map(([name, count]: any) => {
-                        const pct = ((count / kpis.total_records_analyzed) * 100).toFixed(1);
-                        return (
-                          <div key={name} className="space-y-1">
-                            <div className="flex justify-between text-xs">
-                              <span className="font-bold text-slate-700">{name}</span>
-                              <span className="font-mono text-slate-500">
-                                {count.toLocaleString()} ({pct}%)
-                              </span>
-                            </div>
-                            <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden border border-slate-200">
-                              <div
-                                className="bg-sky-500 h-full rounded-full transition-all"
-                                style={{ width: `${Math.min(100, parseFloat(pct) * 3)}%` }}
-                              />
-                            </div>
-                          </div>
-                        );
-                      })}
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setActiveTab("map")}
+                      className="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold flex items-center gap-2 shadow-sm transition"
+                    >
+                      Open Full Screen Map Studio <ArrowRight className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
 
-                <div className="cloud-card p-6 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-sm font-bold text-slate-900">
-                        Top Community Areas by Volume
-                      </h3>
-                      <p className="text-xs text-slate-500">
-                        Official Chicago neighborhood districts
-                      </p>
-                    </div>
-                    <span className="pill-amber">District Volume</span>
-                  </div>
+                {/* Map Display */}
+                <div className="rounded-2xl overflow-hidden border border-slate-200 h-[480px] w-full shadow-inner">
+                  <CrimeMap
+                    clusters={clusters}
+                    filterClusterId={clusterFilter}
+                    onSelectCluster={setSelectedCluster}
+                  />
+                </div>
 
-                  <div className="space-y-3 pt-1">
-                    {Object.entries(eda.community_areas.top_10)
-                      .slice(0, 5)
-                      .map(([area, count]: any) => {
-                        const areaNames: Record<string, string> = {
-                          "8.0": "Near North Side (#8)",
-                          "25.0": "Austin (#25)",
-                          "28.0": "Near West Side (#28)",
-                          "43.0": "South Shore (#43)",
-                          "32.0": "The Loop (#32)",
-                        };
-                        const label = areaNames[area] || `Community Area ${area}`;
-                        const pct = ((count / kpis.total_records_analyzed) * 100).toFixed(1);
-                        return (
-                          <div key={area} className="space-y-1">
-                            <div className="flex justify-between text-xs">
-                              <span className="font-bold text-slate-700">{label}</span>
-                              <span className="font-mono text-slate-500">
-                                {count.toLocaleString()} ({pct}%)
-                              </span>
-                            </div>
-                            <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden border border-slate-200">
-                              <div
-                                className="bg-amber-500 h-full rounded-full transition-all"
-                                style={{ width: `${Math.min(100, parseFloat(pct) * 12)}%` }}
-                              />
-                            </div>
-                          </div>
-                        );
-                      })}
+                <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
+                  <span>* Switch between <strong>Dark Map</strong> and <strong>Light Map</strong> directly on the top-right map button.</span>
+                  <span className="text-sky-700 font-bold font-mono">Chicago Spatial Envelope: 41.64°N - 42.02°N</span>
+                </div>
+              </div>
+
+              {/* Quick Navigation Cards: 3 Simple Steps */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <div
+                  onClick={() => setActiveTab("hotspots")}
+                  className="cloud-card p-6 space-y-3 cursor-pointer hover:border-sky-300 transition group"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center font-bold">
+                    <Flame className="w-5 h-5" />
                   </div>
+                  <div>
+                    <h4 className="font-bold text-sm text-slate-900 group-hover:text-sky-600 transition">
+                      1. Hotspot Directory
+                    </h4>
+                    <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                      Explore detailed tables for all 29 discovered clusters and hyperparameter evaluations.
+                    </p>
+                  </div>
+                  <span className="text-xs font-bold text-sky-600 flex items-center gap-1 pt-1">
+                    View Clusters <ChevronRight className="w-3.5 h-3.5" />
+                  </span>
+                </div>
+
+                <div
+                  onClick={() => setActiveTab("analytics")}
+                  className="cloud-card p-6 space-y-3 cursor-pointer hover:border-sky-300 transition group"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-sky-100 text-sky-600 flex items-center justify-center font-bold">
+                    <BarChart3 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm text-slate-900 group-hover:text-sky-600 transition">
+                      2. Temporal Analytics
+                    </h4>
+                    <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                      Analyze 24-hour crime diurnal waves, daytime vs nighttime shifts, and category breakdowns.
+                    </p>
+                  </div>
+                  <span className="text-xs font-bold text-sky-600 flex items-center gap-1 pt-1">
+                    View Charts <ChevronRight className="w-3.5 h-3.5" />
+                  </span>
+                </div>
+
+                <div
+                  onClick={() => setActiveTab("prediction")}
+                  className="cloud-card p-6 space-y-3 cursor-pointer hover:border-sky-300 transition group"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold">
+                    <ShieldAlert className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm text-slate-900 group-hover:text-sky-600 transition">
+                      3. Spatial Risk Assessment
+                    </h4>
+                    <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                      Test any custom Chicago latitude/longitude to compute proximity to historical crime clusters.
+                    </p>
+                  </div>
+                  <span className="text-xs font-bold text-sky-600 flex items-center gap-1 pt-1">
+                    Run Assessment <ChevronRight className="w-3.5 h-3.5" />
+                  </span>
                 </div>
               </div>
             </div>
           )}
 
-          {/* ════════════════ TAB 2: CRIME MAP ════════════════ */}
+          {/* ════════════════ TAB 2: CRIME MAP (DEDICATED FULL STUDIO) ════════════════ */}
           {activeTab === "map" && (
-            <div className="max-w-7xl mx-auto space-y-4 h-full flex flex-col pb-6">
+            <div className="max-w-6xl mx-auto space-y-5 h-full flex flex-col pb-8">
               {/* Clean Filter Controls Bar */}
-              <div className="cloud-card p-4 flex flex-wrap items-center justify-between gap-4">
+              <div className="cloud-card p-5 flex flex-wrap items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <span className="p-2 rounded-xl bg-sky-100 text-sky-600">
-                    <MapPin className="w-4 h-4" />
+                    <MapPin className="w-5 h-5" />
                   </span>
                   <div>
                     <h3 className="text-sm font-bold text-slate-900">
                       Geographic Spatial Studio
                     </h3>
                     <p className="text-xs text-slate-500">
-                      Explore 29 DBSCAN clusters, verified crime incidents, and bounding density envelopes
+                      Filter 29 DBSCAN clusters and verified crime incidents across Chicago
                     </p>
                   </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2.5">
-                  <span className="text-xs text-slate-500 flex items-center gap-1 font-bold mr-1">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="text-xs text-slate-500 flex items-center gap-1 font-bold">
                     <Filter className="w-3.5 h-3.5" /> Filters:
                   </span>
 
@@ -649,20 +568,20 @@ export default function DashboardPage() {
                       }}
                       className="px-3 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-xs text-slate-700 font-bold transition"
                     >
-                      Reset
+                      Reset Filters
                     </button>
                   )}
 
                   {loadingMapIncidents && (
                     <span className="text-xs text-amber-600 flex items-center gap-1.5 font-bold animate-pulse ml-2">
-                      <RefreshCw className="w-3 h-3 animate-spin" /> Fetching incidents…
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Fetching incidents…
                     </span>
                   )}
                 </div>
               </div>
 
               {/* Map Canvas */}
-              <div className="cloud-card p-2 flex-1 min-h-[580px] rounded-2xl overflow-hidden relative">
+              <div className="cloud-card p-2 flex-1 min-h-[580px] rounded-2xl overflow-hidden relative shadow-sm">
                 <CrimeMap
                   clusters={clusters}
                   incidents={mapIncidents}
@@ -676,18 +595,18 @@ export default function DashboardPage() {
                 <div className="cloud-card p-4 flex items-center justify-between border-sky-300 bg-sky-50">
                   <div className="space-y-0.5">
                     <div className="flex items-center gap-2">
-                      <span className="font-bold text-sm text-sky-800">
+                      <span className="font-bold text-sm text-sky-900">
                         Cluster #{selectedCluster.cluster_id} Selected
                       </span>
-                      <span className="pill-sky">Area {selectedCluster.dominant_community_area}</span>
+                      <span className="pill-sky font-bold">Community Area {selectedCluster.dominant_community_area}</span>
                     </div>
                     <p className="text-xs text-slate-700">
-                      Centroid: {selectedCluster.centroid_latitude.toFixed(4)}°N, {selectedCluster.centroid_longitude.toFixed(4)}°W &middot; Incidents: {selectedCluster.incident_count.toLocaleString()} ({selectedCluster.percentage_of_total}%) &middot; Dominant: {selectedCluster.primary_crime_type}
+                      Centroid: {selectedCluster.centroid_latitude.toFixed(4)}°N, {selectedCluster.centroid_longitude.toFixed(4)}°W &middot; Incidents: {selectedCluster.incident_count.toLocaleString()} ({selectedCluster.percentage_of_total}%) &middot; Dominant Crime: {selectedCluster.primary_crime_type}
                     </p>
                   </div>
                   <button
                     onClick={() => setSelectedCluster(null)}
-                    className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 rounded-lg text-xs font-bold border border-slate-300 transition"
+                    className="px-3.5 py-1.5 bg-white hover:bg-slate-100 text-slate-700 rounded-lg text-xs font-bold border border-slate-300 transition"
                   >
                     Dismiss
                   </button>
@@ -696,53 +615,53 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* ════════════════ TAB 3: HOTSPOT ANALYSIS ════════════════ */}
+          {/* ════════════════ TAB 3: HOTSPOT ANALYSIS (ORGANIZED SUB-TABS) ════════════════ */}
           {activeTab === "hotspots" && (
-            <div className="max-w-7xl mx-auto space-y-6 pb-10">
+            <div className="max-w-6xl mx-auto space-y-6 pb-12">
               {/* Segmented Sub-Navigation */}
               <div className="flex items-center justify-between border-b border-slate-200 pb-4">
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setHotspotSubTab("clusters")}
-                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                    className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
                       hotspotSubTab === "clusters"
                         ? "bg-sky-600 text-white shadow-sm"
                         : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
                     }`}
                   >
-                    Cluster Directory (29 Clusters)
+                    Cluster Catalog (29 Hotspots)
                   </button>
                   <button
                     onClick={() => setHotspotSubTab("experiments")}
-                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                    className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
                       hotspotSubTab === "experiments"
                         ? "bg-sky-600 text-white shadow-sm"
                         : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
                     }`}
                   >
-                    Sensitivity Experiments (25 Tests)
+                    Parameter Sensitivity (25 Tests)
                   </button>
                   <button
                     onClick={() => setHotspotSubTab("params")}
-                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                    className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
                       hotspotSubTab === "params"
                         ? "bg-sky-600 text-white shadow-sm"
                         : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
                     }`}
                   >
-                    DBSCAN Parameters & Math
+                    DBSCAN Math & Architecture
                   </button>
                 </div>
 
                 {hotspotSubTab === "clusters" && (
                   <div className="relative w-64">
-                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3.5" />
                     <input
                       type="text"
                       placeholder="Search cluster, crime, area…"
                       value={clusterSearchQuery}
                       onChange={(e) => setClusterSearchQuery(e.target.value)}
-                      className="cloud-input pl-8 py-1.5 text-xs w-full"
+                      className="cloud-input pl-8 py-2 text-xs w-full"
                     />
                   </div>
                 )}
@@ -753,14 +672,14 @@ export default function DashboardPage() {
                 <div className="cloud-card p-6 space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-sm font-bold text-slate-900">
+                      <h3 className="text-base font-bold text-slate-900">
                         Identified Hotspot Clusters ({filteredClusters.length})
                       </h3>
                       <p className="text-xs text-slate-500">
                         Dominant crimes, geographic coordinates, and historical volume
                       </p>
                     </div>
-                    <span className="pill-sky">ε=500m &middot; min_samples=50</span>
+                    <span className="pill-sky font-bold">ε=500m &middot; min_samples=50</span>
                   </div>
 
                   <div className="overflow-x-auto rounded-xl border border-slate-200">
@@ -773,7 +692,7 @@ export default function DashboardPage() {
                           <th>Centroid (Lat, Lon)</th>
                           <th>Dominant Crime</th>
                           <th>Community Area</th>
-                          <th>Bounding Coordinate Extents</th>
+                          <th>Bounding Coordinates</th>
                         </tr>
                       </thead>
                       <tbody className="font-mono">
@@ -807,14 +726,14 @@ export default function DashboardPage() {
                 <div className="cloud-card p-6 space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-sm font-bold text-slate-900">
+                      <h3 className="text-base font-bold text-slate-900">
                         Hyperparameter Sensitivity Experiments
                       </h3>
                       <p className="text-xs text-slate-500">
                         Tested combinations evaluating radius (&epsilon;) vs density threshold (min_samples)
                       </p>
                     </div>
-                    <span className="pill-cloudy">25 Total Runs</span>
+                    <span className="pill-cloudy font-bold">25 Total Runs</span>
                   </div>
 
                   <div className="overflow-x-auto rounded-xl border border-slate-200">
@@ -878,7 +797,7 @@ export default function DashboardPage() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-                      <span className="text-xs text-slate-500">Neighborhood Radius (&epsilon;)</span>
+                      <span className="text-xs text-slate-500 font-medium">Neighborhood Radius (&epsilon;)</span>
                       <div className="text-lg font-bold text-red-600 font-mono">
                         {params.eps_meters} meters
                       </div>
@@ -886,7 +805,7 @@ export default function DashboardPage() {
                     </div>
 
                     <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-                      <span className="text-xs text-slate-500">Min Samples (min_samples)</span>
+                      <span className="text-xs text-slate-500 font-medium">Min Samples (min_samples)</span>
                       <div className="text-lg font-bold text-red-600 font-mono">
                         {params.min_samples} incidents
                       </div>
@@ -894,7 +813,7 @@ export default function DashboardPage() {
                     </div>
 
                     <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-                      <span className="text-xs text-slate-500">Earth Model</span>
+                      <span className="text-xs text-slate-500 font-medium">Earth Model</span>
                       <div className="text-lg font-bold text-sky-700 font-mono">
                         6,371.0088 km
                       </div>
@@ -902,7 +821,7 @@ export default function DashboardPage() {
                     </div>
 
                     <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-                      <span className="text-xs text-slate-500">Distance Metric</span>
+                      <span className="text-xs text-slate-500 font-medium">Distance Metric</span>
                       <div className="text-lg font-bold text-sky-700 font-mono">
                         Haversine
                       </div>
@@ -921,9 +840,9 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* ════════════════ TAB 4: ANALYTICS ════════════════ */}
+          {/* ════════════════ TAB 4: ANALYTICS (CLEAN 2x2 CHARTS) ════════════════ */}
           {activeTab === "analytics" && (
-            <div className="max-w-7xl mx-auto space-y-7 pb-10">
+            <div className="max-w-6xl mx-auto space-y-8 pb-12">
               {/* Summary KPIs Row */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 <div className="cloud-card p-5 space-y-2">
@@ -1000,7 +919,7 @@ export default function DashboardPage() {
                         Hourly incident frequency across Chicago
                       </p>
                     </div>
-                    <div className="h-[250px] w-full pt-2">
+                    <div className="h-[260px] w-full pt-2">
                       <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={spatial_temporal.hourly_distribution}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -1039,7 +958,7 @@ export default function DashboardPage() {
                         Comparing Daytime (06:00–17:59) vs Nighttime (18:00–05:59)
                       </p>
                     </div>
-                    <div className="h-[250px] w-full pt-2">
+                    <div className="h-[260px] w-full pt-2">
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={spatial_temporal.cluster_day_night_shifts.slice(0, 8)}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -1073,7 +992,7 @@ export default function DashboardPage() {
                         Incident volume across 4 standardized operational windows
                       </p>
                     </div>
-                    <div className="h-[240px] w-full pt-2">
+                    <div className="h-[250px] w-full pt-2">
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={spatial_temporal.time_windows}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -1105,7 +1024,7 @@ export default function DashboardPage() {
                         Proportion inside clusters vs dispersed noise per offense
                       </p>
                     </div>
-                    <div className="h-[240px] w-full pt-2">
+                    <div className="h-[250px] w-full pt-2">
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={spatial_temporal.category_hotspot_profiles.slice(0, 7)}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -1135,8 +1054,8 @@ export default function DashboardPage() {
 
           {/* ════════════════ TAB 5: RISK PREDICTION ════════════════ */}
           {activeTab === "prediction" && (
-            <div className="max-w-4xl mx-auto space-y-6 pb-10">
-              {/* Transparent ML Status Notice */}
+            <div className="max-w-4xl mx-auto space-y-6 pb-12">
+              {/* Notice */}
               <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-3">
                 <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
                 <div className="text-xs space-y-1">
@@ -1180,7 +1099,7 @@ export default function DashboardPage() {
                           setPredLat(p.lat);
                           setPredLon(p.lon);
                         }}
-                        className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-sky-100 hover:text-sky-800 text-xs font-bold text-slate-700 border border-slate-200 transition"
+                        className="px-3.5 py-1.5 rounded-lg bg-slate-100 hover:bg-sky-100 hover:text-sky-800 text-xs font-bold text-slate-700 border border-slate-200 transition"
                       >
                         {p.name}
                       </button>
@@ -1243,7 +1162,7 @@ export default function DashboardPage() {
                   <button
                     type="submit"
                     disabled={isPredicting}
-                    className="w-full py-3 px-4 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs tracking-wide shadow-md shadow-sky-600/20 transition flex items-center justify-center gap-2"
+                    className="w-full py-3.5 px-4 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs tracking-wide shadow-md shadow-sky-600/20 transition flex items-center justify-center gap-2"
                   >
                     {isPredicting ? (
                       <>
@@ -1357,7 +1276,7 @@ export default function DashboardPage() {
 
           {/* ════════════════ TAB 6: METHODOLOGY ════════════════ */}
           {activeTab === "methodology" && (
-            <div className="max-w-4xl mx-auto space-y-6 pb-10">
+            <div className="max-w-4xl mx-auto space-y-6 pb-12">
               <div className="cloud-card p-6 space-y-6">
                 <div className="flex items-center gap-3 pb-4 border-b border-slate-200">
                   <span className="p-2.5 rounded-xl bg-sky-100 text-sky-600">
