@@ -58,9 +58,29 @@ export default function CrimeMap({
       if (!isMounted || !mapContainerRef.current) return;
 
       if (!mapInstanceRef.current) {
-        const map = L.map(mapContainerRef.current).setView([41.8781, -87.6298], 11);
+        const map = L.map(mapContainerRef.current, {
+          zoomControl: true,
+          preferCanvas: true,
+        }).setView([41.8781, -87.6298], 11);
         mapInstanceRef.current = map;
         setMapLoaded(true);
+
+        // Crucial fix: invalidate size after mount and layout settlement
+        setTimeout(() => {
+          if (mapInstanceRef.current) {
+            mapInstanceRef.current.invalidateSize();
+          }
+        }, 200);
+
+        // Keep map responsive to container resize
+        if (typeof ResizeObserver !== "undefined" && mapContainerRef.current) {
+          const ro = new ResizeObserver(() => {
+            if (mapInstanceRef.current) {
+              mapInstanceRef.current.invalidateSize();
+            }
+          });
+          ro.observe(mapContainerRef.current);
+        }
       }
 
       const map = mapInstanceRef.current;
