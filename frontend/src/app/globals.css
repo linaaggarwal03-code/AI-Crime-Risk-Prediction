@@ -42,3 +42,6 @@ body {
 .leaflet-popup-tip {
   background: #0f172a !important;
 }
+.leaflet-tile-pane {
+  filter: invert(100%) hue-rotate(180deg) brightness(92%) contrast(90%);
+}
