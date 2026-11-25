@@ -25,6 +25,7 @@ from backend.config import (
     HOTSPOT_RESULTS_PATH,
     ANALYSIS_SUMMARY_PATH,
     PARAMETER_EXPERIMENTS_PATH,
+    SPATIAL_TEMPORAL_PATH,
     CORS_ORIGINS,
 )
 from backend.schemas import (
@@ -35,8 +36,11 @@ from backend.schemas import (
     IncidentPoint,
     PredictionRequest,
     PredictionResponse,
+    PredictionHistoryItem,
+    PredictionHistoryResponse,
 )
 from src.feature_engineering import SpatialFeatureExtractor, EARTH_RADIUS_KM
+from database.db_manager import DatabaseManager
 
 app = FastAPI(
     title="Urban Crime Risk & Hotspot Prediction API",
@@ -79,22 +83,49 @@ def get_cached_data() -> Dict[str, Any]:
     if CLUSTER_SUMMARY_PATH.exists():
         clusters_df = pd.read_csv(CLUSTER_SUMMARY_PATH)
 
-    # 3. Hotspot Assignments DataFrame (Subsampled if needed for fast queries)
+    # 3. Hotspot Assignments DataFrame
     incidents_df = pd.DataFrame()
     if HOTSPOT_RESULTS_PATH.exists():
         incidents_df = pd.read_csv(HOTSPOT_RESULTS_PATH)
     elif SAMPLE_DATA_PATH.exists():
         incidents_df = pd.read_csv(SAMPLE_DATA_PATH)
 
+    if not incidents_df.empty and "Date" in incidents_df.columns:
+        parsed_dt = pd.to_datetime(incidents_df["Date"], errors="coerce")
+        incidents_df["_hour"] = parsed_dt.dt.hour
+        def _win(h):
+            if pd.isna(h):
+                return "Unknown"
+            h = int(h)
+            if 6 <= h < 12:
+                return "Morning"
+            elif 12 <= h < 18:
+                return "Afternoon"
+            elif 18 <= h <= 23:
+                return "Evening"
+            return "Night"
+        incidents_df["_time_window"] = incidents_df["_hour"].apply(_win)
+
     # 4. Feature Extractor
     feature_extractor = None
     if not clusters_df.empty:
         feature_extractor = SpatialFeatureExtractor(clusters_df)
 
+    # 5. Spatial-Temporal Summary
+    spatial_temporal_data = {}
+    if SPATIAL_TEMPORAL_PATH.exists():
+        with open(SPATIAL_TEMPORAL_PATH, "r", encoding="utf-8") as f:
+            spatial_temporal_data = json.load(f)
+
+    # 6. Database Persistence Manager
+    db_manager = DatabaseManager()
+
     _CACHE["summary"] = summary_data
     _CACHE["clusters_df"] = clusters_df
     _CACHE["incidents_df"] = incidents_df
     _CACHE["feature_extractor"] = feature_extractor
+    _CACHE["spatial_temporal"] = spatial_temporal_data
+    _CACHE["db"] = db_manager
     _CACHE["loaded"] = True
     return _CACHE
 
@@ -204,14 +235,31 @@ def get_parameter_experiments():
     return df.to_dict(orient="records")
 
 
+@app.get("/api/spatial-temporal")
+def get_spatial_temporal_analytics():
+    """
+    Returns Milestone 3 spatial-temporal breakdown (hourly, time-of-day windows,
+    daytime vs. nighttime hotspot shifts, and category hotspot concentrations).
+    """
+    cache = get_cached_data()
+    if not cache.get("spatial_temporal"):
+        raise HTTPException(
+            status_code=404,
+            detail="Spatial-temporal summary not found. Run src/spatial_temporal_analysis.py first.",
+        )
+    return cache["spatial_temporal"]
+
+
 @app.get("/api/historical-incidents", response_model=IncidentsResponse)
 def get_historical_incidents(
     limit: int = Query(default=1000, le=5000, description="Max incidents to return"),
     category: Optional[str] = Query(None, description="Filter by primary crime type"),
     cluster_id: Optional[int] = Query(None, description="Filter by cluster ID (-1 for noise)"),
+    time_window: Optional[str] = Query(None, description="Filter by Morning, Afternoon, Evening, or Night"),
+    community_area: Optional[int] = Query(None, description="Filter by Chicago Community Area ID"),
 ):
     """
-    Returns historical incident points for interactive map rendering.
+    Returns historical incident points for interactive map rendering with multi-dimensional filtering.
     """
     cache = get_cached_data()
     incidents_df = cache["incidents_df"]
@@ -226,7 +274,16 @@ def get_historical_incidents(
     if cluster_id is not None and "cluster_id" in filtered.columns:
         filtered = filtered[filtered["cluster_id"] == cluster_id]
 
+    if time_window and "_time_window" in filtered.columns:
+        filtered = filtered[filtered["_time_window"].str.lower() == time_window.lower()]
+
+    if community_area is not None and "Community Area" in filtered.columns:
+        filtered = filtered[filtered["Community Area"] == community_area]
+
     total_avail = len(filtered)
+    if total_avail == 0:
+        return IncidentsResponse(total_returned=0, total_available=0, incidents=[])
+
     sample_df = filtered.sample(n=min(limit, total_avail), random_state=42)
 
     lat_col = "Latitude" if "Latitude" in sample_df.columns else "latitude"
@@ -261,12 +318,14 @@ def get_historical_incidents(
 def predict_crime_risk(req: PredictionRequest):
     """
     Provisional risk prediction endpoint.
-    Performs spatial proximity estimation against historical DBSCAN hotspots,
-    while honestly documenting that live ML inference is pending Lina's final model testing.
+    Performs spatial proximity estimation against historical DBSCAN hotspots and persists
+    the query to the relational database (PostgreSQL / SQLite fallback),
+    while honestly documenting that live ML inference is pending Lina's final model integration.
     """
     cache = get_cached_data()
     clusters_df = cache["clusters_df"]
     extractor: Optional[SpatialFeatureExtractor] = cache["feature_extractor"]
+    db: Optional[DatabaseManager] = cache.get("db")
 
     nearest_cluster = None
     dist_km = None
@@ -299,8 +358,24 @@ def predict_crime_risk(req: PredictionRequest):
         else:
             risk_tier = "Low / Baseline (Dispersed Location > 1.5km from Hotspots)"
 
+    query_id = None
+    db_backend = None
+    if db is not None:
+        target_ts = f"{req.date or '2026-11-25'} {req.time or '12:00'}"
+        query_id = db.save_prediction_query(
+            latitude=req.latitude,
+            longitude=req.longitude,
+            target_timestamp=target_ts,
+            risk_tier=risk_tier,
+            nearest_cluster_id=nearest_cluster["cluster_id"] if nearest_cluster else None,
+            distance_km=dist_km,
+        )
+        db_backend = db.backend_type
+
     return PredictionResponse(
         status="PROVISIONAL_SPATIAL_PROXIMITY_ONLY",
+        query_id=query_id,
+        database_backend=db_backend,
         query_coordinates={"latitude": req.latitude, "longitude": req.longitude},
         nearest_hotspot=nearest_cluster,
         distance_to_hotspot_km=dist_km,
@@ -309,8 +384,25 @@ def predict_crime_risk(req: PredictionRequest):
         disclaimer=(
             "Notice: This is a geometric proximity calculation relative to historical DBSCAN clusters. "
             "Final supervised classification and count forecasting are pending completion of Member 1's "
-            "(Lina) model testing and artifact serialization. This does NOT represent a confirmed future crime forecast."
+            "(Lina) model integration. This does NOT represent a confirmed future crime forecast."
         ),
+    )
+
+
+@app.get("/api/prediction-history", response_model=PredictionHistoryResponse)
+def get_prediction_history(limit: int = Query(default=15, le=100)):
+    """
+    Returns recent spatial risk queries persisted in PostgreSQL / SQLite.
+    """
+    cache = get_cached_data()
+    db: Optional[DatabaseManager] = cache.get("db")
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database persistence layer unavailable.")
+    rows = db.get_recent_predictions(limit=limit)
+    return PredictionHistoryResponse(
+        database_backend=db.backend_type,
+        total_returned=len(rows),
+        history=[PredictionHistoryItem(**r) for r in rows],
     )
 
 

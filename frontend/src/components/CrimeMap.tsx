@@ -16,8 +16,19 @@ interface HotspotCluster {
   dominant_community_area: string | number;
 }
 
+interface IncidentPoint {
+  id?: string;
+  date?: string;
+  primary_type?: string;
+  community_area?: string;
+  latitude: number;
+  longitude: number;
+  cluster_id?: number | null;
+}
+
 interface CrimeMapProps {
   clusters: HotspotCluster[];
+  incidents?: IncidentPoint[];
   showNoise?: boolean;
   filterClusterId?: number | null;
   onSelectCluster?: (cluster: HotspotCluster | null) => void;
@@ -25,6 +36,7 @@ interface CrimeMapProps {
 
 export default function CrimeMap({
   clusters,
+  incidents = [],
   showNoise = true,
   filterClusterId = null,
   onSelectCluster,
@@ -39,7 +51,6 @@ export default function CrimeMap({
 
     let isMounted = true;
 
-    // Dynamically import Leaflet
     import("leaflet").then((L) => {
       if (!isMounted || !mapContainerRef.current) return;
 
@@ -64,6 +75,28 @@ export default function CrimeMap({
       layersRef.current.forEach((l) => map.removeLayer(l));
       layersRef.current = [];
 
+      // 1. Render sampled/filtered historical incidents if provided
+      incidents.forEach((pt) => {
+        const isNoise = pt.cluster_id === -1 || pt.cluster_id === null;
+        if (!showNoise && isNoise) return;
+        const dot = L.circleMarker([pt.latitude, pt.longitude], {
+          radius: 3,
+          fillColor: isNoise ? "#94a3b8" : "#38bdf8",
+          color: isNoise ? "#64748b" : "#0284c7",
+          weight: 0.5,
+          opacity: 0.7,
+          fillOpacity: 0.55,
+        }).addTo(map);
+        dot.bindPopup(
+          `<div style="font-family:sans-serif;font-size:12px;">
+            <strong>${pt.primary_type || "Incident"}</strong><br/>
+            Area: ${pt.community_area || "N/A"} | Cluster: ${pt.cluster_id === -1 ? "Noise" : "#" + pt.cluster_id}<br/>
+            <span style="color:#94a3b8">${pt.date || ""}</span>
+          </div>`
+        );
+        layersRef.current.push(dot);
+      });
+
       const palette = [
         "#f43f5e", "#3b82f6", "#10b981", "#f59e0b",
         "#a855f7", "#06b6d4", "#f97316", "#6366f1",
@@ -77,7 +110,7 @@ export default function CrimeMap({
       filteredClusters.forEach((c, idx) => {
         const color = palette[idx % palette.length];
 
-        // 1. Draw Bounding Envelope Rectangle
+        // 2. Draw Bounding Envelope Rectangle
         const bounds: [[number, number], [number, number]] = [
           [c.min_latitude, c.min_longitude],
           [c.max_latitude, c.max_longitude],
@@ -86,11 +119,11 @@ export default function CrimeMap({
           color: color,
           weight: 1,
           dashArray: "4, 4",
-          fillOpacity: 0.12,
+          fillOpacity: 0.1,
         }).addTo(map);
         layersRef.current.push(rect);
 
-        // 2. Draw Centroid Circle Marker
+        // 3. Draw Centroid Circle Marker
         const marker = L.circleMarker([c.centroid_latitude, c.centroid_longitude], {
           radius: Math.min(18, Math.max(7, Math.log(c.incident_count) * 2.2)),
           fillColor: color,
@@ -127,7 +160,7 @@ export default function CrimeMap({
     return () => {
       isMounted = false;
     };
-  }, [clusters, filterClusterId, showNoise, onSelectCluster]);
+  }, [clusters, incidents, filterClusterId, showNoise, onSelectCluster]);
 
   return (
     <div className="relative w-full h-full min-h-[500px] rounded-xl overflow-hidden border border-slate-800 shadow-2xl">
@@ -137,9 +170,17 @@ export default function CrimeMap({
           Loading interactive spatial layers...
         </div>
       )}
-      <div className="absolute bottom-4 right-4 z-[400] bg-slate-900/90 backdrop-blur-md border border-slate-700/60 text-slate-200 px-3 py-2 rounded-lg text-xs shadow-lg pointer-events-none">
-        <span className="inline-block w-2.5 h-2.5 rounded-full bg-rose-500 mr-2"></span>
-        Hotspot Centroid Radius ∝ Incident Frequency
+      <div className="absolute bottom-4 right-4 z-[400] bg-slate-900/90 backdrop-blur-md border border-slate-700/60 text-slate-200 px-3 py-2 rounded-lg text-xs shadow-lg pointer-events-none space-y-1">
+        <div>
+          <span className="inline-block w-2.5 h-2.5 rounded-full bg-rose-500 mr-2"></span>
+          Hotspot Centroid Radius &prop; Incident Frequency
+        </div>
+        {incidents.length > 0 && (
+          <div>
+            <span className="inline-block w-2.5 h-2.5 rounded-full bg-sky-400 mr-2"></span>
+            Filtered Incident Sample ({incidents.length.toLocaleString()} pts)
+          </div>
+        )}
       </div>
     </div>
   );

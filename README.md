@@ -120,10 +120,13 @@ python src/spatial_eda.py
 # 3. Run DBSCAN Hotspot Detection & Parameter Tuning
 python src/dbscan_clustering.py
 
-# 4. Generate Spatial Feature Engineering Proposal
+# 4. Run Spatial-Temporal Analysis (Milestone 3)
+python src/spatial_temporal_analysis.py
+
+# 5. Generate Spatial Feature Engineering Proposal
 python src/feature_engineering.py
 
-# 5. Seed Relational Database
+# 6. Seed Relational Database
 python database/seed_data.py
 ```
 
@@ -131,18 +134,22 @@ python database/seed_data.py
 ```bash
 pytest tests -v
 ```
-*All 16 unit and integration tests execute with a 100% pass rate.*
+*All 23 unit and integration tests execute with a 100% pass rate.*
 
-### Step 4: Launch Backend API
+### Step 4: Launch via Docker Compose (Recommended for Full PostgreSQL Stack)
 ```bash
-uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload
+docker compose up --build
 ```
-- Swagger Interactive Documentation: `http://localhost:8000/docs`
-- Health Check: `http://localhost:8000/health`
-- Detected Hotspots: `http://localhost:8000/api/hotspots`
+- **Frontend Dashboard:** `http://localhost:3000`
+- **FastAPI Backend Docs:** `http://localhost:8000/docs`
+- **PostgreSQL 15:** `localhost:5432` (auto-initialized from `database/schema.sql`)
 
-### Step 5: Launch Next.js Frontend Dashboard
+### Step 5: Manual Local Launch (Zero-Config SQLite Fallback)
 ```bash
+# Terminal 1 — Backend
+uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload
+
+# Terminal 2 — Frontend
 cd frontend
 npm install
 npm run dev
@@ -151,7 +158,7 @@ Open **`http://localhost:3000`** in your browser to view the 6-view interactive 
 
 ---
 
-## 3. Key Analytical Results (Milestone 2)
+## 3. Key Analytical Results (Milestones 2 & 3)
 
 - **Analyzed Records:** 24,960 valid spatial records (99.84% completeness; 40 missing coordinates excluded).
 - **Distance Metric:** Spherical Haversine ($R = 6,371.0088\text{ km}$) on coordinates in radians. Prevents 34% planar distortion error.
@@ -159,6 +166,7 @@ Open **`http://localhost:3000`** in your browser to view the 6-view interactive 
 - **Detected Hotspot Clusters:** **29 clusters**
 - **Clustered Incident Share:** **19,351 incidents (77.53%)**
 - **Dispersed Background Noise:** **5,609 incidents (22.47%)**
+- **Daytime vs. Nighttime Split:** 13,310 Daytime (06:00–17:59) vs. 11,650 Nighttime (18:00–05:59).
 - **Top Concentration:** Cluster #0 centered in the Chicago Downtown / Near North Side / West Town commercial and transit corridor with 15,660 incidents.
 
 ---
@@ -170,5 +178,6 @@ Open **`http://localhost:3000`** in your browser to view the 6-view interactive 
 3. [Database Architecture & Schema Specification](docs/database_schema.md)
 4. [System Limitations & Responsible AI](docs/limitations.md)
 5. [Milestone 2 Academic Progress Report](docs/milestone2_progress_report.md)
-6. [Academic Viva Questions & Answers](docs/viva_questions.md)
-7. [Spatial Feature Engineering Proposal](docs/feature_proposal.md)
+6. [Milestone 3 Standalone Progress Report](docs/milestone3_progress_report.md)
+7. [Academic Viva Questions & Answers](docs/viva_questions.md)
+8. [Spatial Feature Engineering Proposal](docs/feature_proposal.md)

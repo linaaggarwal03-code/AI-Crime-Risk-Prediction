@@ -71,3 +71,32 @@ def test_predict_risk_provisional_endpoint():
     assert "nearest_hotspot" in data
     assert "distance_to_hotspot_km" in data
     assert "disclaimer" in data
+    assert data["query_id"] is not None
+    assert data["database_backend"] in ("SQLite", "PostgreSQL")
+
+
+def test_spatial_temporal_endpoint():
+    response = client.get("/api/spatial-temporal")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["hourly_distribution"]) == 24
+    assert len(data["time_windows"]) == 4
+    assert "cluster_day_night_shifts" in data
+
+
+def test_historical_incidents_filtered_endpoint():
+    response = client.get("/api/historical-incidents?limit=25&time_window=Morning&category=THEFT")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total_returned"] <= 25
+    for pt in data["incidents"]:
+        assert pt["primary_type"] == "THEFT"
+
+
+def test_prediction_history_endpoint():
+    response = client.get("/api/prediction-history?limit=5")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["database_backend"] in ("SQLite", "PostgreSQL")
+    assert "history" in data
+    assert len(data["history"]) >= 1

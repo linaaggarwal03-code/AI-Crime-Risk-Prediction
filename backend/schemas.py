@@ -64,9 +64,30 @@ class PredictionRequest(BaseModel):
 
 class PredictionResponse(BaseModel):
     status: str
+    query_id: Optional[int] = None
+    database_backend: Optional[str] = None
     query_coordinates: Dict[str, float]
     nearest_hotspot: Optional[Dict[str, Any]] = None
     distance_to_hotspot_km: Optional[float] = None
     provisional_spatial_risk_tier: str
     model_integration_status: str
     disclaimer: str
+
+
+class PredictionHistoryItem(BaseModel):
+    id: int
+    latitude: float
+    longitude: float
+    target_timestamp: str
+    risk_tier: str
+    nearest_cluster_id: Optional[int] = None
+    distance_to_hotspot_km: Optional[float] = None
+    model_name: str
+    model_version: str
+    created_at: str
+
+
+class PredictionHistoryResponse(BaseModel):
+    database_backend: str
+    total_returned: int
+    history: List[PredictionHistoryItem]

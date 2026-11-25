@@ -19,6 +19,7 @@ CLUSTER_SUMMARY_PATH = OUTPUTS_DIR / "cluster_summary.csv"
 HOTSPOT_RESULTS_PATH = OUTPUTS_DIR / "hotspot_results.csv"
 ANALYSIS_SUMMARY_PATH = OUTPUTS_DIR / "analysis_summary.json"
 PARAMETER_EXPERIMENTS_PATH = OUTPUTS_DIR / "parameter_experiments.csv"
+SPATIAL_TEMPORAL_PATH = OUTPUTS_DIR / "spatial_temporal_summary.json"
 
 # CORS configuration
 CORS_ORIGINS = [

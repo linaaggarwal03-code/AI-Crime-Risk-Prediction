@@ -16,7 +16,21 @@ import {
   CheckCircle2,
   ChevronRight,
   Database,
+  History,
+  Filter,
 } from "lucide-react";
+import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+} from "recharts";
 
 import analysisData from "../data/analysisData.json";
 
@@ -37,28 +51,69 @@ export default function DashboardPage() {
 
   const [selectedCluster, setSelectedCluster] = useState<any>(null);
   const [clusterFilter, setClusterFilter] = useState<number | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState<string>("");
+  const [timeWindowFilter, setTimeWindowFilter] = useState<string>("");
+  const [mapIncidents, setMapIncidents] = useState<any[]>([]);
+  const [loadingMapIncidents, setLoadingMapIncidents] = useState<boolean>(false);
 
-  // Prediction Form State
+  // Prediction Form & History State
   const [predLat, setPredLat] = useState<number>(41.8781);
   const [predLon, setPredLon] = useState<number>(-87.6298);
-  const [predDate, setPredDate] = useState<string>("2026-10-27");
+  const [predDate, setPredDate] = useState<string>("2026-11-25");
   const [predTime, setPredTime] = useState<string>("14:30");
   const [predResult, setPredResult] = useState<any>(null);
   const [isPredicting, setIsPredicting] = useState<boolean>(false);
   const [backendOnline, setBackendOnline] = useState<boolean>(false);
+  const [predHistory, setPredHistory] = useState<any[]>([]);
+  const [historyBackend, setHistoryBackend] = useState<string>("SQLite / Local");
 
-  const { summary, clusters, experiments, eda } = analysisData;
+  const { summary, clusters, experiments, eda, spatial_temporal } = analysisData as any;
   const kpis = summary.results_summary;
   const params = summary.selected_hyperparameters;
 
-  // Check live backend connectivity
+  const fetchPredictionHistory = () => {
+    fetch("http://localhost:8000/api/prediction-history?limit=10")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data && data.history) {
+          setPredHistory(data.history);
+          setHistoryBackend(data.database_backend || "SQLite");
+        }
+      })
+      .catch(() => {});
+  };
+
+  // Check live backend connectivity and load initial history
   useEffect(() => {
     fetch("http://localhost:8000/health")
       .then((res) => {
-        if (res.ok) setBackendOnline(true);
+        if (res.ok) {
+          setBackendOnline(true);
+          fetchPredictionHistory();
+        }
       })
       .catch(() => setBackendOnline(false));
   }, []);
+
+  // Fetch filtered incidents when map tab filters change
+  useEffect(() => {
+    if (activeTab !== "map" || !backendOnline) return;
+    setLoadingMapIncidents(true);
+    const qs = new URLSearchParams({ limit: "600" });
+    if (clusterFilter !== null) qs.set("cluster_id", String(clusterFilter));
+    if (categoryFilter) qs.set("category", categoryFilter);
+    if (timeWindowFilter) qs.set("time_window", timeWindowFilter);
+
+    fetch(`http://localhost:8000/api/historical-incidents?${qs.toString()}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data && data.incidents) {
+          setMapIncidents(data.incidents);
+        }
+      })
+      .catch(() => setMapIncidents([]))
+      .finally(() => setLoadingMapIncidents(false));
+  }, [activeTab, backendOnline, clusterFilter, categoryFilter, timeWindowFilter]);
 
   const handlePredict = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,6 +133,7 @@ export default function DashboardPage() {
       if (res.ok) {
         const data = await res.json();
         setPredResult(data);
+        fetchPredictionHistory();
         setIsPredicting(false);
         return;
       }
@@ -491,7 +547,37 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex items-center gap-1.5 text-xs text-slate-400">
+                    <Filter className="w-3.5 h-3.5" />
+                    <span>Filters:</span>
+                  </div>
+
+                  <select
+                    value={categoryFilter}
+                    onChange={(e) => setCategoryFilter(e.target.value)}
+                    className="bg-slate-950 border border-slate-700 text-xs text-slate-200 px-3 py-1.5 rounded-lg focus:outline-none focus:border-indigo-500"
+                  >
+                    <option value="">All Crime Categories</option>
+                    {Object.keys(eda.categories.top_10).map((cat: string) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={timeWindowFilter}
+                    onChange={(e) => setTimeWindowFilter(e.target.value)}
+                    className="bg-slate-950 border border-slate-700 text-xs text-slate-200 px-3 py-1.5 rounded-lg focus:outline-none focus:border-indigo-500"
+                  >
+                    <option value="">All Time Windows</option>
+                    <option value="Morning">Morning (06:00-11:59)</option>
+                    <option value="Afternoon">Afternoon (12:00-17:59)</option>
+                    <option value="Evening">Evening (18:00-23:59)</option>
+                    <option value="Night">Night (00:00-05:59)</option>
+                  </select>
+
                   <select
                     value={clusterFilter ?? ""}
                     onChange={(e) =>
@@ -509,13 +595,23 @@ export default function DashboardPage() {
                     ))}
                   </select>
 
-                  {clusterFilter !== null && (
+                  {(clusterFilter !== null || categoryFilter !== "" || timeWindowFilter !== "") && (
                     <button
-                      onClick={() => setClusterFilter(null)}
-                      className="text-xs text-slate-400 hover:text-slate-200 underline"
+                      onClick={() => {
+                        setClusterFilter(null);
+                        setCategoryFilter("");
+                        setTimeWindowFilter("");
+                      }}
+                      className="text-xs text-indigo-400 hover:text-indigo-300 underline"
                     >
-                      Reset Filter
+                      Reset Filters
                     </button>
+                  )}
+
+                  {loadingMapIncidents && (
+                    <span className="text-[11px] text-amber-400 animate-pulse">
+                      Updating points...
+                    </span>
                   )}
                 </div>
               </div>
@@ -523,6 +619,7 @@ export default function DashboardPage() {
               <div className="h-[650px] relative">
                 <CrimeMap
                   clusters={clusters}
+                  incidents={mapIncidents}
                   filterClusterId={clusterFilter}
                   onSelectCluster={setSelectedCluster}
                 />
@@ -780,6 +877,110 @@ export default function DashboardPage() {
                 </div>
               </div>
 
+              {/* Interactive Spatial-Temporal Recharts Grid */}
+              {spatial_temporal && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl">
+                    <h3 className="text-sm font-semibold text-slate-200 mb-1">
+                      24-Hour Diurnal Crime Distribution
+                    </h3>
+                    <p className="text-xs text-slate-400 mb-4">
+                      Hourly incident frequency across {spatial_temporal.total_records_with_valid_timestamps.toLocaleString()} timestamped records
+                    </p>
+                    <div className="h-[260px] w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={spatial_temporal.hourly_distribution}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                          <XAxis dataKey="label" stroke="#94a3b8" fontSize={10} interval={3} />
+                          <YAxis stroke="#94a3b8" fontSize={10} />
+                          <Tooltip
+                            contentStyle={{ backgroundColor: "#0f172a", borderColor: "#334155", fontSize: "12px" }}
+                          />
+                          <Area
+                            type="monotone"
+                            dataKey="count"
+                            name="Incidents"
+                            stroke="#6366f1"
+                            fill="#6366f1"
+                            fillOpacity={0.25}
+                          />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl">
+                    <h3 className="text-sm font-semibold text-slate-200 mb-1">
+                      Daytime vs. Nighttime Hotspot Shifts (Top Clusters)
+                    </h3>
+                    <p className="text-xs text-slate-400 mb-4">
+                      Comparing Daytime (06:00–17:59) vs. Nighttime (18:00–05:59) volume per DBSCAN cluster
+                    </p>
+                    <div className="h-[260px] w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={spatial_temporal.cluster_day_night_shifts.slice(0, 8)}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                          <XAxis dataKey="cluster_label" stroke="#94a3b8" fontSize={10} />
+                          <YAxis stroke="#94a3b8" fontSize={10} />
+                          <Tooltip
+                            contentStyle={{ backgroundColor: "#0f172a", borderColor: "#334155", fontSize: "12px" }}
+                          />
+                          <Legend wrapperStyle={{ fontSize: "11px" }} />
+                          <Bar dataKey="daytime_count" name="Daytime" fill="#38bdf8" radius={[3, 3, 0, 0]} />
+                          <Bar dataKey="nighttime_count" name="Nighttime" fill="#f43f5e" radius={[3, 3, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl">
+                    <h3 className="text-sm font-semibold text-slate-200 mb-1">
+                      Time-of-Day Window Breakdown
+                    </h3>
+                    <p className="text-xs text-slate-400 mb-4">
+                      Incident volume across 6-hour urban activity windows
+                    </p>
+                    <div className="h-[240px] w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={spatial_temporal.time_windows}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                          <XAxis dataKey="window" stroke="#94a3b8" fontSize={10} />
+                          <YAxis stroke="#94a3b8" fontSize={10} />
+                          <Tooltip
+                            contentStyle={{ backgroundColor: "#0f172a", borderColor: "#334155", fontSize: "12px" }}
+                          />
+                          <Bar dataKey="count" name="Incidents" fill="#10b981" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl">
+                    <h3 className="text-sm font-semibold text-slate-200 mb-1">
+                      Category Hotspot Concentration (Clustered vs. Noise)
+                    </h3>
+                    <p className="text-xs text-slate-400 mb-4">
+                      Proportion of each offense type falling inside DBSCAN clusters vs. dispersed noise
+                    </p>
+                    <div className="h-[240px] w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={spatial_temporal.category_hotspot_profiles.slice(0, 7)}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                          <XAxis dataKey="category" stroke="#94a3b8" fontSize={9} />
+                          <YAxis stroke="#94a3b8" fontSize={10} />
+                          <Tooltip
+                            contentStyle={{ backgroundColor: "#0f172a", borderColor: "#334155", fontSize: "12px" }}
+                          />
+                          <Legend wrapperStyle={{ fontSize: "11px" }} />
+                          <Bar dataKey="clustered" stackId="a" name="In Hotspots" fill="#8b5cf6" />
+                          <Bar dataKey="noise" stackId="a" name="Noise (-1)" fill="#475569" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Visualizations Gallery */}
               <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-xl">
                 <h3 className="text-sm font-semibold text-slate-200 mb-1">
@@ -1006,6 +1207,62 @@ export default function DashboardPage() {
                   </div>
                 </div>
               )}
+
+              {/* Recent Persisted Queries (Database Layer) */}
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <History className="w-4 h-4 text-emerald-400" />
+                    <h3 className="text-sm font-semibold text-slate-200">
+                      Recent Spatial Risk Queries (Persisted History)
+                    </h3>
+                  </div>
+                  <span className="px-2 py-0.5 rounded text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-800 font-mono">
+                    DB: {historyBackend}
+                  </span>
+                </div>
+
+                {predHistory.length === 0 ? (
+                  <p className="text-xs text-slate-400">
+                    {backendOnline
+                      ? "No spatial risk queries logged yet. Submit a coordinate query above to persist it."
+                      : "Start the FastAPI backend on port 8000 to view and persist query history."}
+                  </p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead>
+                        <tr className="border-b border-slate-800 text-slate-400">
+                          <th className="py-2 px-2">ID</th>
+                          <th className="py-2 px-2">Coordinates</th>
+                          <th className="py-2 px-2">Nearest Cluster</th>
+                          <th className="py-2 px-2">Distance</th>
+                          <th className="py-2 px-2">Spatial Risk Tier</th>
+                          <th className="py-2 px-2">Target Time</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800/60 font-mono text-[11px] text-slate-300">
+                        {predHistory.map((h: any) => (
+                          <tr key={h.id} className="hover:bg-slate-800/40">
+                            <td className="py-2 px-2 text-slate-400">#{h.id}</td>
+                            <td className="py-2 px-2">
+                              {h.latitude.toFixed(4)}°N, {h.longitude.toFixed(4)}°W
+                            </td>
+                            <td className="py-2 px-2 text-rose-400">
+                              {h.nearest_cluster_id !== null ? `Cluster #${h.nearest_cluster_id}` : "N/A"}
+                            </td>
+                            <td className="py-2 px-2">
+                              {h.distance_to_hotspot_km !== null ? `${h.distance_to_hotspot_km} km` : "N/A"}
+                            </td>
+                            <td className="py-2 px-2 font-sans">{h.risk_tier}</td>
+                            <td className="py-2 px-2 text-slate-400">{h.target_timestamp}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
