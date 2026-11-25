@@ -4,194 +4,215 @@
 
 @import "leaflet/dist/leaflet.css";
 
-/* ───────────────────────────────────────────────
-   Design Tokens — Sky Blue / Cloudy White / Amber
-   ─────────────────────────────────────────────── */
+/* ─────────────────────────────────────────────────────────────
+   EXECUTIVE PALETTE: Sky Blue, Cloudy White & Amber Red
+   ───────────────────────────────────────────────────────────── */
 :root {
-  --bg-base:     #07111f;   /* deep navy */
-  --bg-panel:    #0c1a2e;   /* slightly lighter navy */
-  --bg-card:     #102236;   /* card background */
-  --bg-hover:    #163045;   /* hover / selected */
+  /* Surfaces */
+  --bg-app:        #080e18;   /* Deep atmospheric midnight */
+  --bg-sidebar:    #0c1524;   /* Polished navy sidebar */
+  --bg-card:       #111d31;   /* Card surface */
+  --bg-card-sub:   #09111e;   /* Inset / input surface */
+  --bg-hover:      #182844;   /* Interactive hover */
 
-  --sky-400:     #38bdf8;
-  --sky-500:     #0ea5e9;
-  --sky-600:     #0284c7;
+  /* Cloudy White text & accents */
+  --cloudy-50:     #ffffff;
+  --cloudy-100:    #f8fafc;
+  --cloudy-200:    #f1f5f9;
+  --cloudy-300:    #e2e8f0;
+  --cloudy-400:    #cbd5e1;
+  --cloudy-muted:  #798ba3;
 
-  --amber:       #f59e0b;
-  --amber-light: #fcd34d;
-  --red:         #ef4444;
-  --crimson:     #dc2626;
+  /* Sky Blue primary */
+  --sky-glow:      rgba(14, 165, 233, 0.15);
+  --sky-300:       #7dd3fc;
+  --sky-400:       #38bdf8;
+  --sky-500:       #0ea5e9;
+  --sky-600:       #0284c7;
 
-  --text-primary:   #f0f9ff;   /* cloudy white */
-  --text-secondary: #bae6fd;   /* sky-200 */
-  --text-muted:     #64748b;   /* slate-500 */
+  /* Amber & Red accents */
+  --amber-500:     #f59e0b;
+  --amber-glow:    rgba(245, 158, 11, 0.15);
+  --red-500:       #ef4444;
+  --red-600:       #dc2626;
+  --red-glow:      rgba(239, 68, 68, 0.15);
 
-  --border:      #1e3a52;
-  --border-soft: #163045;
+  /* Borders */
+  --border-card:   rgba(226, 232, 240, 0.08);
+  --border-card-hover: rgba(56, 189, 248, 0.35);
+  --border-strong: #1b2b45;
 
-  --background: var(--bg-base);
-  --foreground: var(--text-primary);
+  --background:    var(--bg-app);
+  --foreground:    var(--cloudy-100);
 }
 
-/* ─── Base ─────────────────────────────────────── */
+/* ─── Global Reset & Typography ───────────────────────────── */
+* {
+  box-sizing: border-box;
+}
+
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* ─── Scrollbar ─────────────────────────────────── */
-::-webkit-scrollbar { width: 5px; height: 5px; }
-::-webkit-scrollbar-track { background: var(--bg-base); }
+/* ─── Polished Minimal Scrollbar ──────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-app);
+}
 ::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 4px;
+  background: #1e3250;
+  border-radius: 999px;
 }
-::-webkit-scrollbar-thumb:hover { background: #2563ab; }
-
-/* ─── Leaflet popup dark skin ───────────────────── */
-.leaflet-popup-content-wrapper {
-  background: var(--bg-panel) !important;
-  color: var(--text-primary) !important;
-  border-radius: 10px !important;
-  border: 1px solid var(--border) !important;
-  box-shadow: 0 12px 32px rgba(0,0,0,0.6) !important;
+::-webkit-scrollbar-thumb:hover {
+  background: #0284c7;
 }
-.leaflet-popup-tip { background: var(--bg-panel) !important; }
 
-/* ─── Custom utility classes ────────────────────── */
-.card {
+/* ─── Modern Card & Glassmorphism ─────────────────────────── */
+.glass-panel {
   background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 1.25rem;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  border: 1px solid var(--border-card);
+  border-radius: 16px;
+  box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.35);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.card-hover {
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-.card-hover:hover {
-  border-color: var(--sky-500);
-  box-shadow: 0 4px 24px rgba(14,165,233,0.12);
+.glass-panel-hover:hover {
+  border-color: var(--border-card-hover);
+  box-shadow: 0 8px 32px -2px rgba(14, 165, 233, 0.12);
 }
 
-.badge-sky {
-  background: rgba(14,165,233,0.12);
-  color: var(--sky-400);
-  border: 1px solid rgba(14,165,233,0.3);
-  border-radius: 999px;
-  padding: 0.15rem 0.65rem;
+/* ─── Badges & Status Pills ───────────────────────────────── */
+.pill-sky {
+  background: rgba(14, 165, 233, 0.12);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  border-radius: 9999px;
+  padding: 3px 10px;
   font-size: 11px;
   font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
 
-.badge-amber {
-  background: rgba(245,158,11,0.12);
-  color: var(--amber);
-  border: 1px solid rgba(245,158,11,0.3);
-  border-radius: 999px;
-  padding: 0.15rem 0.65rem;
+.pill-amber {
+  background: rgba(245, 158, 11, 0.12);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 9999px;
+  padding: 3px 10px;
   font-size: 11px;
   font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
 
-.badge-red {
-  background: rgba(239,68,68,0.12);
-  color: var(--red);
-  border: 1px solid rgba(239,68,68,0.3);
-  border-radius: 999px;
-  padding: 0.15rem 0.65rem;
+.pill-red {
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 9999px;
+  padding: 3px 10px;
   font-size: 11px;
   font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
 
-.badge-green {
-  background: rgba(16,185,129,0.12);
-  color: #34d399;
-  border: 1px solid rgba(16,185,129,0.3);
-  border-radius: 999px;
-  padding: 0.15rem 0.65rem;
+.pill-cloudy {
+  background: rgba(241, 245, 249, 0.08);
+  color: #f1f5f9;
+  border: 1px solid rgba(241, 245, 249, 0.2);
+  border-radius: 9999px;
+  padding: 3px 10px;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
 
-/* Stat card number */
-.stat-num {
-  font-size: 1.75rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  line-height: 1;
-}
-
-/* Section headings */
-.section-title {
-  font-size: 0.875rem;
-  font-weight: 700;
-  color: var(--text-primary);
-}
-.section-sub {
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  margin-top: 2px;
-}
-
-/* Select / input base */
-.form-select, .form-input {
-  background: var(--bg-base);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  color: var(--text-primary);
-  font-size: 12px;
-  padding: 0.4rem 0.75rem;
+/* ─── Form Controls ───────────────────────────────────────── */
+.app-input {
+  background: var(--bg-card-sub);
+  border: 1px solid var(--border-strong);
+  color: var(--cloudy-100);
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: 13px;
+  transition: all 0.15s ease;
   outline: none;
-  transition: border-color 0.15s;
 }
-.form-select:focus, .form-input:focus {
+.app-input:focus {
   border-color: var(--sky-500);
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
 }
 
-/* Table base */
-.data-table th {
-  padding: 0.6rem 0.75rem;
+.app-select {
+  background: var(--bg-card-sub);
+  border: 1px solid var(--border-strong);
+  color: var(--cloudy-200);
+  border-radius: 10px;
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  outline: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.app-select:focus {
+  border-color: var(--sky-500);
+  box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.15);
+}
+
+/* ─── Tables ──────────────────────────────────────────────── */
+.pro-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.pro-table th {
+  background: rgba(9, 17, 30, 0.8);
+  color: var(--cloudy-muted);
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-muted);
-  border-bottom: 1px solid var(--border);
+  letter-spacing: 0.06em;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-strong);
 }
-.data-table td {
-  padding: 0.5rem 0.75rem;
+.pro-table td {
+  padding: 11px 14px;
   font-size: 12px;
-  border-bottom: 1px solid var(--border-soft);
+  color: var(--cloudy-300);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.04);
+  transition: background 0.12s;
 }
-.data-table tbody tr:hover { background: var(--bg-hover); }
-
-/* Nav item */
-.nav-item {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  padding: 0.55rem 0.85rem;
-  border-radius: 10px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-muted);
-  cursor: pointer;
-  border: 1px solid transparent;
-  transition: all 0.15s;
-}
-.nav-item:hover {
-  color: var(--text-secondary);
+.pro-table tr:hover td {
   background: var(--bg-hover);
+  color: var(--cloudy-100);
 }
-.nav-item.active {
-  color: var(--sky-400);
-  background: rgba(14,165,233,0.1);
-  border-color: rgba(14,165,233,0.25);
-  font-weight: 600;
+
+/* ─── Leaflet Popups (Dark & Light) ────────────────────────── */
+.leaflet-popup-content-wrapper {
+  background: #0d1727 !important;
+  color: #f8fafc !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(56, 189, 248, 0.3) !important;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6) !important;
+  padding: 4px !important;
+}
+.leaflet-popup-tip {
+  background: #0d1727 !important;
 }
