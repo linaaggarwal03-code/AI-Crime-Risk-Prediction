@@ -43,9 +43,12 @@ export default function CrimeMap({
 }: CrimeMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
+  const tileLayersRef = useRef<any[]>([]);
   const layersRef = useRef<any[]>([]);
   const [mapLoaded, setMapLoaded] = useState(false);
+  const [mapTheme, setMapTheme] = useState<"dark" | "light">("dark");
 
+  // 1. Initialize map & swap basemap tiles when mapTheme changes
   useEffect(() => {
     if (typeof window === "undefined" || !mapContainerRef.current) return;
 
@@ -56,43 +59,76 @@ export default function CrimeMap({
 
       if (!mapInstanceRef.current) {
         const map = L.map(mapContainerRef.current).setView([41.8781, -87.6298], 11);
-
-        L.tileLayer(
-          "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
-          {
-            attribution: "Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ",
-            maxZoom: 16,
-          }
-        ).addTo(map);
-
-        L.tileLayer(
-          "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}",
-          {
-            maxZoom: 16,
-          }
-        ).addTo(map);
-
         mapInstanceRef.current = map;
         setMapLoaded(true);
       }
 
       const map = mapInstanceRef.current;
 
-      // Clear existing layers
+      // Remove existing basemap tile layers
+      tileLayersRef.current.forEach((tl) => map.removeLayer(tl));
+      tileLayersRef.current = [];
+
+      if (mapTheme === "dark") {
+        const darkBase = L.tileLayer(
+          "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+          {
+            attribution: "Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ",
+            maxZoom: 16,
+          }
+        ).addTo(map);
+        const darkRef = L.tileLayer(
+          "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}",
+          {
+            maxZoom: 16,
+          }
+        ).addTo(map);
+        darkBase.bringToBack();
+        tileLayersRef.current.push(darkBase, darkRef);
+      } else {
+        const lightStreet = L.tileLayer(
+          "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+          {
+            attribution: "Tiles &copy; Esri &mdash; Source: Esri, HERE, Garmin, OpenStreetMap",
+            maxZoom: 18,
+          }
+        ).addTo(map);
+        lightStreet.bringToBack();
+        tileLayersRef.current.push(lightStreet);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [mapTheme]);
+
+  // 2. Render clusters and filtered incidents
+  useEffect(() => {
+    if (typeof window === "undefined" || !mapInstanceRef.current) return;
+
+    let isMounted = true;
+
+    import("leaflet").then((L) => {
+      if (!isMounted || !mapInstanceRef.current) return;
+
+      const map = mapInstanceRef.current;
+
+      // Clear existing vector layers
       layersRef.current.forEach((l) => map.removeLayer(l));
       layersRef.current = [];
 
-      // 1. Render sampled/filtered historical incidents if provided
+      // Render sampled/filtered historical incidents if provided
       incidents.forEach((pt) => {
         const isNoise = pt.cluster_id === -1 || pt.cluster_id === null;
         if (!showNoise && isNoise) return;
         const dot = L.circleMarker([pt.latitude, pt.longitude], {
           radius: 3,
-          fillColor: isNoise ? "#94a3b8" : "#38bdf8",
-          color: isNoise ? "#64748b" : "#0284c7",
+          fillColor: isNoise ? "#94a3b8" : "#0284c7",
+          color: isNoise ? "#64748b" : "#0369a1",
           weight: 0.5,
-          opacity: 0.7,
-          fillOpacity: 0.55,
+          opacity: 0.75,
+          fillOpacity: 0.6,
         }).addTo(map);
         dot.bindPopup(
           `<div style="font-family:sans-serif;font-size:12px;">
@@ -117,20 +153,18 @@ export default function CrimeMap({
       filteredClusters.forEach((c, idx) => {
         const color = palette[idx % palette.length];
 
-        // 2. Draw Bounding Envelope Rectangle
         const bounds: [[number, number], [number, number]] = [
           [c.min_latitude, c.min_longitude],
           [c.max_latitude, c.max_longitude],
         ];
         const rect = L.rectangle(bounds, {
           color: color,
-          weight: 1,
+          weight: 1.5,
           dashArray: "4, 4",
-          fillOpacity: 0.1,
+          fillOpacity: 0.12,
         }).addTo(map);
         layersRef.current.push(rect);
 
-        // 3. Draw Centroid Circle Marker
         const marker = L.circleMarker([c.centroid_latitude, c.centroid_longitude], {
           radius: Math.min(18, Math.max(7, Math.log(c.incident_count) * 2.2)),
           fillColor: color,
@@ -167,11 +201,38 @@ export default function CrimeMap({
     return () => {
       isMounted = false;
     };
-  }, [clusters, incidents, filterClusterId, showNoise, onSelectCluster]);
+  }, [clusters, incidents, filterClusterId, showNoise, onSelectCluster, mapLoaded]);
 
   return (
     <div className="relative w-full h-full min-h-[500px] rounded-xl overflow-hidden border border-slate-800 shadow-2xl">
       <div ref={mapContainerRef} className="w-full h-full min-h-[500px]" />
+
+      {/* Dark / Light Mode Map Toggle */}
+      <div className="absolute top-3 right-3 z-[400] flex items-center bg-slate-900/90 backdrop-blur-md border border-slate-700/80 rounded-lg p-1 shadow-lg text-xs">
+        <button
+          type="button"
+          onClick={() => setMapTheme("dark")}
+          className={`px-2.5 py-1 rounded-md font-medium transition ${
+            mapTheme === "dark"
+              ? "bg-indigo-600 text-white shadow"
+              : "text-slate-300 hover:text-white"
+          }`}
+        >
+          Dark Map
+        </button>
+        <button
+          type="button"
+          onClick={() => setMapTheme("light")}
+          className={`px-2.5 py-1 rounded-md font-medium transition ${
+            mapTheme === "light"
+              ? "bg-amber-500 text-slate-950 shadow font-semibold"
+              : "text-slate-300 hover:text-white"
+          }`}
+        >
+          Light Map
+        </button>
+      </div>
+
       {!mapLoaded && (
         <div className="absolute inset-0 bg-slate-900/80 flex items-center justify-center text-slate-400">
           Loading interactive spatial layers...
