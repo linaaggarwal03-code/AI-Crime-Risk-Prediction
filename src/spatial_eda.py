@@ -331,9 +331,9 @@ class SpatialEDA:
     <div id="map"></div>
     <script>
         var map = L.map('map').setView([{mean_lat}, {mean_lon}], 11);
-        L.tileLayer('https://tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{
-            attribution: '&copy; OpenStreetMap contributors',
-            maxZoom: 19
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{{z}}/{{y}}/{{x}}', {{
+            attribution: 'Tiles &copy; Esri',
+            maxZoom: 18
         }}).addTo(map);
 
         var markers = {json.dumps(markers_data)};

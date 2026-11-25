@@ -58,10 +58,17 @@ export default function CrimeMap({
         const map = L.map(mapContainerRef.current).setView([41.8781, -87.6298], 11);
 
         L.tileLayer(
-          "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+          "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
           {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-            maxZoom: 19,
+            attribution: "Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ",
+            maxZoom: 16,
+          }
+        ).addTo(map);
+
+        L.tileLayer(
+          "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}",
+          {
+            maxZoom: 16,
           }
         ).addTo(map);
 

@@ -458,9 +458,12 @@ def generate_interactive_hotspot_html_map(
     <div id="map"></div>
     <script>
         var map = L.map('map').setView([{mean_lat}, {mean_lon}], 11);
-        L.tileLayer('https://tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{
-            attribution: '&copy; OpenStreetMap contributors',
-            maxZoom: 19
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{{z}}/{{y}}/{{x}}', {{
+            attribution: 'Tiles &copy; Esri',
+            maxZoom: 16
+        }}).addTo(map);
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{{z}}/{{y}}/{{x}}', {{
+            maxZoom: 16
         }}).addTo(map);
 
         var points = {json.dumps(points_data)};
