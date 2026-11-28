@@ -1,0 +1,23 @@
+{
+  "low_threshold_q25": 3.0,
+  "median_threshold_q50": 6.0,
+  "high_threshold_q75": 12.0,
+  "categories": [
+    "Low",
+    "Moderate",
+    "High",
+    "Very High"
+  ],
+  "boundary_rules": {
+    "Low": "value <= low_threshold_q25",
+    "Moderate": "low_threshold_q25 < value <= median_threshold_q50",
+    "High": "median_threshold_q50 < value <= high_threshold_q75",
+    "Very High": "value > high_threshold_q75"
+  },
+  "derivation_split": "2020-2023 Training Split (train_features.parquet)",
+  "training_observations": 110187,
+  "derivation_date_range": [
+    "2020-01-31",
+    "2023-12-31"
+  ]
+}

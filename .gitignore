@@ -1,11 +1,39 @@
+
+# Data
 data/*.csv
 *.csv
-data/processed/
+!outputs/*.csv
 *.parquet
+data/processed/*
+!data/processed/train_features.parquet
+!data/processed/val_features.parquet
+!data/processed/test_features.parquet
+!data/processed/hotspot_clusters.parquet
+!data/processed/kde_density_grid.npz
+
+# Python
 __pycache__/
 *.pyc
 .venv/
-AI-Crime-Risk-PredictiOn/
 .env
 .ipynb_checkpoints/
-
+.pytest_cache/
+
+# Databases
+database/*.db
+*.db
+*.sqlite3
+
+# Node / Next.js
+node_modules/
+frontend/node_modules/
+frontend/.next/
+frontend/.vercel/
+frontend/*.tsbuildinfo
+
+# Operating System
+.DS_Store
+Thumbs.db
+
+# Project-specific
+AI-Crime-Risk-PredictiOn/

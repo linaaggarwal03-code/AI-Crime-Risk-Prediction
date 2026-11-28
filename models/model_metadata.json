@@ -1,0 +1,95 @@
+{
+  "model_name": "Random Forest Regressor (Champion)",
+  "model_type": "sklearn.ensemble.RandomForestRegressor",
+  "hyperparameters": {
+    "n_estimators": 150,
+    "max_depth": 12,
+    "min_samples_leaf": 10,
+    "max_features": "sqrt",
+    "random_state": 42,
+    "n_jobs": -1
+  },
+  "feature_count": 34,
+  "feature_names": [
+    "day_of_week",
+    "is_weekend",
+    "month",
+    "day_of_month",
+    "day_of_year",
+    "sin_dow",
+    "cos_dow",
+    "sin_month",
+    "cos_month",
+    "sin_doy",
+    "cos_doy",
+    "is_holiday",
+    "lag_1",
+    "lag_2",
+    "lag_3",
+    "lag_7",
+    "lag_14",
+    "lag_28",
+    "rolling_mean_7",
+    "rolling_std_7",
+    "rolling_min_7",
+    "rolling_max_7",
+    "rolling_mean_14",
+    "rolling_std_14",
+    "rolling_min_14",
+    "rolling_max_14",
+    "rolling_mean_30",
+    "rolling_std_30",
+    "rolling_min_30",
+    "rolling_max_30",
+    "ratio_lag1_to_rolling7",
+    "citywide_lag_1",
+    "citywide_rolling_7",
+    "community_area"
+  ],
+  "target_variable": "crime_count",
+  "training_environment": {
+    "python_version": "3.13.13",
+    "scikit_learn_version": "1.9.1",
+    "numpy_version": "2.5.2",
+    "pandas_version": "3.0.5",
+    "joblib_version": "1.6.0",
+    "scipy_version": "1.18.1",
+    "platform": "Windows-11-10.0.26200-SP0"
+  },
+  "training_dataset": {
+    "filepath": "data/processed/train_features.parquet",
+    "date_range": [
+      "2020-01-31",
+      "2023-12-31"
+    ],
+    "observation_count": 110187,
+    "unique_community_areas": 77
+  },
+  "performance_metrics": {
+    "validation_2024": {
+      "dataset": "val_features.parquet",
+      "observations": 28182,
+      "mae": 2.514,
+      "rmse": 3.4717,
+      "source_report": "reports/random_forest_evaluation.md"
+    },
+    "held_out_test_2025": {
+      "dataset": "test_features.parquet",
+      "observations": 28105,
+      "mae": 2.4167,
+      "rmse": 3.3365,
+      "r2": 0.8081,
+      "wape_pct": 28.58,
+      "negative_predictions": 0,
+      "classification_accuracy": 0.6141,
+      "classification_macro_f1": 0.619,
+      "classification_weighted_f1": 0.6209,
+      "source_report": "reports/final_test_evaluation.md & reports/risk_classification_evaluation.md"
+    }
+  },
+  "serialization": {
+    "model_file": "models/random_forest_champion.joblib",
+    "format": "joblib",
+    "compression": "zlib level 3"
+  }
+}

@@ -1,0 +1,217 @@
+@import "leaflet/dist/leaflet.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─────────────────────────────────────────────────────────────
+   CLOUDY WHITE, SKY BLUE & AMBER RED EXECUTIVE PALETTE
+   ───────────────────────────────────────────────────────────── */
+:root {
+  /* Cloudy White / Light Slate Surfaces */
+  --bg-app:        #f0f4f9;   /* Soft cloudy-white background */
+  --bg-sidebar:    #ffffff;   /* Pure crisp white sidebar */
+  --bg-card:       #ffffff;   /* Pure white card surface */
+  --bg-card-sub:   #f8fafc;   /* Subtle cloudy-white inset / input */
+  --bg-hover:      #e0f2fe;   /* Sky blue hover */
+
+  /* Text: Ultra-sharp Slate/Navy */
+  --text-main:     #0f172a;   /* Primary dark slate */
+  --text-body:     #334155;   /* Secondary body slate */
+  --text-muted:    #64748b;   /* Muted captions */
+
+  /* Sky Blue Brand */
+  --sky-50:        #f0f9ff;
+  --sky-100:       #e0f2fe;
+  --sky-200:       #bae6fd;
+  --sky-400:       #38bdf8;
+  --sky-500:       #0ea5e9;
+  --sky-600:       #0284c7;
+  --sky-700:       #0369a1;
+
+  /* Amber Red Accents */
+  --amber-50:      #fffbeb;
+  --amber-100:     #fef3c7;
+  --amber-500:     #f59e0b;
+  --amber-600:     #d97706;
+  --amber-700:     #b45309;
+
+  --red-50:        #fef2f2;
+  --red-100:       #fee2e2;
+  --red-500:       #ef4444;
+  --red-600:       #dc2626;
+  --red-700:       #b91c1c;
+
+  /* Borders & Shadows */
+  --border-light:  #e2e8f0;
+  --border-sky:    #bae6fd;
+  --border-strong: #cbd5e1;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  color: var(--text-main);
+  background: var(--bg-app);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── Scrollbar ───────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #0ea5e9;
+}
+
+/* ─── Cloudy White Glass Panels ───────────────────────────── */
+.cloud-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px -2px rgba(14, 165, 233, 0.06), 0 2px 6px -1px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s ease;
+}
+.cloud-card-hover:hover {
+  border-color: #7dd3fc;
+  box-shadow: 0 8px 30px -4px rgba(14, 165, 233, 0.15);
+}
+
+/* ─── Status Pills (Sky Blue, Cloudy White, Amber Red) ─────── */
+.pill-sky {
+  background: #e0f2fe;
+  color: #0369a1;
+  border: 1px solid #bae6fd;
+  border-radius: 9999px;
+  padding: 4px 11px;
+  font-size: 11px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.pill-amber {
+  background: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fde68a;
+  border-radius: 9999px;
+  padding: 4px 11px;
+  font-size: 11px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.pill-red {
+  background: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+  border-radius: 9999px;
+  padding: 4px 11px;
+  font-size: 11px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.pill-cloudy {
+  background: #f8fafc;
+  color: #334155;
+  border: 1px solid #e2e8f0;
+  border-radius: 9999px;
+  padding: 4px 11px;
+  font-size: 11px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* ─── Input & Select ──────────────────────────────────────── */
+.cloud-input {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #0f172a;
+  border-radius: 10px;
+  padding: 9px 14px;
+  font-size: 13px;
+  transition: all 0.15s ease;
+  outline: none;
+}
+.cloud-input:focus {
+  border-color: #0284c7;
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
+}
+
+.cloud-select {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #0f172a;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  outline: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.cloud-select:focus {
+  border-color: #0284c7;
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
+}
+
+/* ─── Professional Tables ─────────────────────────────────── */
+.cloud-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.cloud-table th {
+  background: #f8fafc;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 12px 14px;
+  border-bottom: 2px solid #e2e8f0;
+}
+.cloud-table td {
+  padding: 12px 14px;
+  font-size: 12px;
+  color: #334155;
+  border-bottom: 1px solid #f1f5f9;
+  transition: background 0.1s;
+}
+.cloud-table tr:hover td {
+  background: #f0f9ff;
+  color: #0f172a;
+}
+
+/* ─── Leaflet Popups ──────────────────────────────────────── */
+.leaflet-popup-content-wrapper {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border-radius: 12px !important;
+  border: 1px solid #bae6fd !important;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12) !important;
+  padding: 4px !important;
+}
+.leaflet-popup-tip {
+  background: #ffffff !important;
+}
