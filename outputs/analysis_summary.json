@@ -1,0 +1,100 @@
+{
+  "project": "AI-Powered Urban Crime Risk & Hotspot Prediction System",
+  "author": "Aditi Verma (Member 2)",
+  "algorithm": "DBSCAN (Density-Based Spatial Clustering of Applications with Noise)",
+  "distance_metric": "Haversine (spherical angular radians)",
+  "earth_radius_km": 6371.0088,
+  "selected_hyperparameters": {
+    "eps_meters": 500.0,
+    "eps_km": 0.5,
+    "eps_radians": 7.85e-05,
+    "min_samples": 50
+  },
+  "results_summary": {
+    "total_records_analyzed": 24960,
+    "num_clusters_identified": 29,
+    "clustered_incidents": 19351,
+    "clustered_percentage": 77.53,
+    "noise_incidents": 5609,
+    "noise_percentage": 22.47,
+    "largest_cluster_size": 15660,
+    "smallest_cluster_size": 24,
+    "median_cluster_size": 76.0
+  },
+  "top_clusters": [
+    {
+      "cluster_id": 0,
+      "incident_count": 15660,
+      "percentage_of_total": 62.74,
+      "centroid_latitude": 41.858043,
+      "centroid_longitude": -87.663225,
+      "min_latitude": 41.720956,
+      "max_latitude": 42.022537,
+      "min_longitude": -87.776098,
+      "max_longitude": -87.579369,
+      "primary_crime_type": "THEFT",
+      "dominant_community_area": "8"
+    },
+    {
+      "cluster_id": 2,
+      "incident_count": 1269,
+      "percentage_of_total": 5.08,
+      "centroid_latitude": 41.757355,
+      "centroid_longitude": -87.569344,
+      "min_latitude": 41.72547,
+      "max_latitude": 41.778047,
+      "min_longitude": -87.598258,
+      "max_longitude": -87.542548,
+      "primary_crime_type": "BATTERY",
+      "dominant_community_area": "43"
+    },
+    {
+      "cluster_id": 3,
+      "incident_count": 213,
+      "percentage_of_total": 0.85,
+      "centroid_latitude": 41.966992,
+      "centroid_longitude": -87.718038,
+      "min_latitude": 41.960556,
+      "max_latitude": 41.974869,
+      "min_longitude": -87.73215,
+      "max_longitude": -87.703649,
+      "primary_crime_type": "THEFT",
+      "dominant_community_area": "14"
+    },
+    {
+      "cluster_id": 4,
+      "incident_count": 201,
+      "percentage_of_total": 0.81,
+      "centroid_latitude": 41.995916,
+      "centroid_longitude": -87.689274,
+      "min_latitude": 41.989217,
+      "max_latitude": 42.002569,
+      "min_longitude": -87.703325,
+      "max_longitude": -87.675311,
+      "primary_crime_type": "THEFT",
+      "dominant_community_area": "2"
+    },
+    {
+      "cluster_id": 7,
+      "incident_count": 187,
+      "percentage_of_total": 0.75,
+      "centroid_latitude": 41.807771,
+      "centroid_longitude": -87.667365,
+      "min_latitude": 41.798914,
+      "max_latitude": 41.815854,
+      "min_longitude": -87.677877,
+      "max_longitude": -87.656388,
+      "primary_crime_type": "BATTERY",
+      "dominant_community_area": "61"
+    }
+  ],
+  "artifacts_generated": {
+    "hotspot_results_csv": "outputs/hotspot_results.csv",
+    "cluster_summary_csv": "outputs/cluster_summary.csv",
+    "parameter_experiments_csv": "outputs/parameter_experiments.csv",
+    "cluster_map_figure": "outputs/figures/dbscan_hotspot_clusters.png",
+    "cluster_sizes_figure": "outputs/figures/dbscan_cluster_sizes.png",
+    "parameter_tuning_figure": "outputs/figures/dbscan_parameter_tuning.png",
+    "interactive_hotspots_map": "outputs/interactive_hotspot_map.html"
+  }
+}

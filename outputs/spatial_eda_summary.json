@@ -1,0 +1,79 @@
+{
+  "spatial_audit": {
+    "total_records": 25000,
+    "valid_records": 24960,
+    "excluded_records": 40,
+    "missing_coordinates": 40,
+    "invalid_mathematical_coordinates": 0,
+    "out_of_bounds_coordinates": 0,
+    "duplicate_coordinate_pairs": 6361,
+    "bounds_used": {
+      "min_latitude": 41.6,
+      "max_latitude": 42.1,
+      "min_longitude": -88.05,
+      "max_longitude": -87.45
+    },
+    "latitude_range": [
+      41.645795847,
+      42.02253664
+    ],
+    "longitude_range": [
+      -87.909630659,
+      -87.524616314
+    ]
+  },
+  "total_analyzed_incidents": 24960,
+  "geographic_extent": {
+    "min_latitude": 41.645795847,
+    "max_latitude": 42.02253664,
+    "latitude_span_deg": 0.3767407929999962,
+    "min_longitude": -87.909630659,
+    "max_longitude": -87.524616314,
+    "longitude_span_deg": 0.38501434500000187,
+    "mean_latitude": 41.84606181456887,
+    "mean_longitude": -87.66751447148928
+  },
+  "categories": {
+    "distinct_count": 29,
+    "top_10": {
+      "THEFT": 5866,
+      "BATTERY": 4455,
+      "CRIMINAL DAMAGE": 2857,
+      "ASSAULT": 2164,
+      "MOTOR VEHICLE THEFT": 2053,
+      "OTHER OFFENSE": 1727,
+      "DECEPTIVE PRACTICE": 1571,
+      "BURGLARY": 1169,
+      "NARCOTICS": 646,
+      "CRIMINAL TRESPASS": 612
+    }
+  },
+  "community_areas": {
+    "distinct_count": 78,
+    "top_10": {
+      "8.0": 1209,
+      "25.0": 1204,
+      "28.0": 1042,
+      "43.0": 892,
+      "32.0": 884,
+      "24.0": 705,
+      "29.0": 662,
+      "69.0": 660,
+      "6.0": 644,
+      "71.0": 639
+    }
+  },
+  "temporal_extent": {
+    "start_date": "2025-11-18 10:24:00",
+    "end_date": "2025-12-31 23:58:00",
+    "days_span": 43
+  },
+  "figures": {
+    "vis_a": "outputs/figures/vis_a_historical_locations.png",
+    "vis_b": "outputs/figures/vis_b_crime_density_heatmap.png",
+    "vis_c": "outputs/figures/vis_c_crime_category_distribution.png",
+    "vis_d": "outputs/figures/vis_d_area_level_distribution.png",
+    "vis_e": "outputs/figures/vis_e_geographic_coverage.png",
+    "interactive_map": "outputs/interactive_spatial_map.html"
+  }
+}
