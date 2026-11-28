@@ -3,6 +3,7 @@ FastAPI Backend Application for AI-Powered Urban Crime Risk & Hotspot Prediction
 Serves precomputed spatial analysis, DBSCAN hotspot clusters, and provisional prediction hooks.
 """
 
+from contextlib import asynccontextmanager
 import os
 import sys
 import json
@@ -10,8 +11,9 @@ from pathlib import Path
 from typing import Dict, List, Optional, Any
 import numpy as np
 import pandas as pd
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Path as ApiPath, Depends, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 # Add parent directory to sys.path
@@ -40,12 +42,60 @@ from backend.schemas import (
     PredictionHistoryResponse,
 )
 from src.feature_engineering import SpatialFeatureExtractor, EARTH_RADIUS_KM
+from src.service import CrimeRiskService, InsufficientHistoryError
 from database.db_manager import DatabaseManager
+from app.schemas import (
+    LivenessResponse,
+    HealthResponse as MLHealthResponse,
+    CommunityAreaItem,
+    CommunityAreasResponse,
+    PredictionRequest as MLPredictionRequest,
+    PredictionResponse as MLPredictionResponse,
+    HotspotsResponse as AreaHotspotsResponse,
+    KdeResponse,
+    ModelInfoResponse,
+)
+
+API_VERSION = "1.0.0"
+_CACHE: Dict[str, Any] = {}
+
+
+def _init_ml_service() -> Optional[CrimeRiskService]:
+    """Initializes and caches the CrimeRiskService singleton once."""
+    if "ml_service" not in _CACHE and "ml_service_error" not in _CACHE:
+        try:
+            _CACHE["ml_service"] = CrimeRiskService()
+            _CACHE["ml_service_error"] = None
+        except Exception as exc:
+            _CACHE["ml_service"] = None
+            _CACHE["ml_service_error"] = str(exc)
+    return _CACHE.get("ml_service")
+
+
+def get_ml_service() -> CrimeRiskService:
+    """FastAPI dependency returning the initialized CrimeRiskService or 503."""
+    service = _init_ml_service()
+    if service is None:
+        err = _CACHE.get("ml_service_error", "Unknown initialization failure")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"CrimeRiskService is not ready: {err}",
+        )
+    return service
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Initializes CrimeRiskService on ASGI startup."""
+    _init_ml_service()
+    yield
+
 
 app = FastAPI(
     title="Urban Crime Risk & Hotspot Prediction API",
-    description="Academic REST backend serving spatial crime intelligence and DBSCAN hotspot clustering.",
-    version="1.0.0",
+    description="Unified REST backend serving spatial crime intelligence, DBSCAN hotspot clustering, and supervised ML crime-risk forecasting.",
+    version=API_VERSION,
+    lifespan=lifespan,
 )
 
 # Enable CORS for frontend integration
@@ -61,8 +111,29 @@ app.add_middleware(
 if OUTPUTS_DIR.exists():
     app.mount("/outputs", StaticFiles(directory=str(OUTPUTS_DIR)), name="outputs")
 
-# In-memory cached artifacts
-_CACHE: Dict[str, Any] = {}
+
+@app.exception_handler(InsufficientHistoryError)
+async def insufficient_history_handler(request: Request, exc: InsufficientHistoryError):
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+        content={"detail": str(exc)},
+    )
+
+
+@app.exception_handler(ValueError)
+async def value_error_handler(request: Request, exc: ValueError):
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={"detail": str(exc)},
+    )
+
+
+@app.exception_handler(KeyError)
+async def key_error_handler(request: Request, exc: KeyError):
+    return JSONResponse(
+        status_code=status.HTTP_404_NOT_FOUND,
+        content={"detail": str(exc)},
+    )
 
 
 def get_cached_data() -> Dict[str, Any]:
@@ -373,36 +444,199 @@ def predict_crime_risk(req: PredictionRequest):
         db_backend = db.backend_type
 
     return PredictionResponse(
-        status="PROVISIONAL_SPATIAL_PROXIMITY_ONLY",
+        status="SPATIAL_PROXIMITY_ONLY",
         query_id=query_id,
         database_backend=db_backend,
         query_coordinates={"latitude": req.latitude, "longitude": req.longitude},
         nearest_hotspot=nearest_cluster,
         distance_to_hotspot_km=dist_km,
         provisional_spatial_risk_tier=risk_tier,
-        model_integration_status="PENDING_LINA_SUPERVISED_MODEL_EXPORT",
+        model_integration_status="SEPARATE_ML_ENDPOINT_ACTIVE",
         disclaimer=(
-            "Notice: This is a geometric proximity calculation relative to historical DBSCAN clusters. "
-            "Final supervised classification and count forecasting are pending completion of Member 1's "
-            "(Lina) model integration. This does NOT represent a confirmed future crime forecast."
+            "Notice: This endpoint performs geometric Haversine proximity analysis against historical DBSCAN "
+            "hotspot clusters. For supervised Random Forest crime-count forecasting and four-tier risk "
+            "classification, use POST /api/predict."
         ),
     )
 
 
 @app.get("/api/prediction-history", response_model=PredictionHistoryResponse)
-def get_prediction_history(limit: int = Query(default=15, le=100)):
+def get_prediction_history(
+    limit: int = Query(default=15, le=100),
+    prediction_type: Optional[str] = Query(
+        default=None,
+        pattern="^(ml_forecast|spatial_proximity)$",
+        description="Optional filter: 'ml_forecast' or 'spatial_proximity'",
+    ),
+):
     """
-    Returns recent spatial risk queries persisted in PostgreSQL / SQLite.
+    Returns recent ML forecasts and spatial risk queries persisted in PostgreSQL / SQLite.
     """
     cache = get_cached_data()
     db: Optional[DatabaseManager] = cache.get("db")
     if db is None:
         raise HTTPException(status_code=503, detail="Database persistence layer unavailable.")
-    rows = db.get_recent_predictions(limit=limit)
+    rows = db.get_recent_predictions(limit=limit, prediction_type=prediction_type)
     return PredictionHistoryResponse(
         database_backend=db.backend_type,
         total_returned=len(rows),
         history=[PredictionHistoryItem(**r) for r in rows],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Integrated ML Prediction & Hotspot Service Endpoints (CrimeRiskService)
+# ---------------------------------------------------------------------------
+
+@app.get("/health/live", response_model=LivenessResponse, tags=["Health"])
+def health_liveness():
+    """Liveness probe: verifies the ASGI process is alive and receiving traffic."""
+    return LivenessResponse(status="alive")
+
+
+@app.get("/health/ready", response_model=MLHealthResponse, tags=["Health"])
+def health_readiness():
+    """
+    Readiness probe: verifies all serialized ML artifacts and the historical feature store
+    are loaded in CrimeRiskService.
+    """
+    service = _init_ml_service()
+    if service is None:
+        err = _CACHE.get("ml_service_error", "CrimeRiskService failed to initialize")
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={
+                "status": "not_ready",
+                "checks": {
+                    "model_loaded": False,
+                    "hotspots_loaded": False,
+                    "kde_loaded": False,
+                    "historical_store_ready": False,
+                },
+                "historical_store_records": 0,
+                "error": err,
+            },
+        )
+
+    model_ok = service.model is not None
+    hotspots_ok = (service.hotspots_df is not None) and (len(service.hotspots_df) == 617)
+    kde_ok = (service.kde_grid is not None) and (service.kde_grid["density_grid"].shape == (50, 50))
+    history_records = len(service._historical_index)
+    history_ok = history_records == 166474
+    all_ready = model_ok and hotspots_ok and kde_ok and history_ok
+
+    payload = {
+        "status": "ready" if all_ready else "degraded",
+        "checks": {
+            "model_loaded": model_ok,
+            "hotspots_loaded": hotspots_ok,
+            "kde_loaded": kde_ok,
+            "historical_store_ready": history_ok,
+        },
+        "historical_store_records": history_records,
+    }
+    if not all_ready:
+        return JSONResponse(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, content=payload)
+    return MLHealthResponse(**payload)
+
+
+@app.get("/api/areas", response_model=CommunityAreasResponse, tags=["ML Prediction"])
+def list_community_areas():
+    """Returns valid Chicago Community Area IDs (1 through 77)."""
+    areas = [CommunityAreaItem(community_area_id=i) for i in range(1, 78)]
+    return CommunityAreasResponse(total_areas=len(areas), areas=areas)
+
+
+@app.post("/api/predict", response_model=MLPredictionResponse, tags=["ML Prediction"])
+def predict_area_crime_risk(
+    request: MLPredictionRequest,
+    service: CrimeRiskService = Depends(get_ml_service),
+):
+    """
+    Unified supervised Random Forest crime-count forecast, four-tier risk classification,
+    and localized cross-boundary DBSCAN hotspot retrieval via CrimeRiskService.
+    """
+    history_df: Optional[pd.DataFrame] = None
+    if request.recent_history is not None:
+        records = [r.model_dump() for r in request.recent_history]
+        history_df = pd.DataFrame(records)
+
+    result = service.predict_area_risk(
+        community_area=request.community_area,
+        date=request.date,
+        recent_history_df=history_df,
+        include_hotspots=request.include_hotspots,
+        hotspot_limit=request.hotspot_limit,
+    )
+
+    # Persist successful ML forecast to DatabaseManager (non-fatal if DB write fails)
+    try:
+        db: Optional[DatabaseManager] = get_cached_data().get("db")
+        if db is not None:
+            db.save_ml_prediction(
+                community_area=result["query"]["community_area"],
+                prediction_date=result["query"]["date"],
+                predicted_crime_count=result["prediction"]["predicted_crime_count"],
+                risk_tier=result["prediction"]["risk_tier"],
+                model_name=result["model_info"]["model_name"],
+                model_version=result["model_info"].get("version"),
+                is_historical=result["query"]["is_historical"],
+                historical_actual_count=result["context"].get("historical_actual_count"),
+            )
+    except Exception as exc:
+        print(f"[backend.main] Warning: failed to persist ML prediction to database: {exc}")
+
+    return MLPredictionResponse(**result)
+
+
+@app.get("/api/hotspots/{area_id}", response_model=AreaHotspotsResponse, tags=["ML Prediction"])
+def get_area_hotspots_ml(
+    area_id: int = ApiPath(..., ge=1, le=77, description="Chicago Community Area ID (1-77)"),
+    limit: int = Query(10, ge=1, le=50, description="Maximum number of clusters to return"),
+    service: CrimeRiskService = Depends(get_ml_service),
+):
+    """Retrieves localized DBSCAN hotspot clusters touching the specified Community Area."""
+    result = service.get_area_hotspots(community_area=area_id, limit=limit)
+    result["community_area"] = area_id
+    return AreaHotspotsResponse(**result)
+
+
+@app.get("/api/kde", response_model=KdeResponse, tags=["ML Prediction"])
+def get_kde_density_surface(service: CrimeRiskService = Depends(get_ml_service)):
+    """Returns the precomputed continuous 50x50 macroscopic KDE density surface."""
+    surface = service.get_kde_density_surface()
+    return KdeResponse(
+        grid_size=int(surface["grid_size"]),
+        bandwidth_meters=float(surface["bandwidth_meters"]),
+        target_year=int(surface["target_year"]),
+        lat_grid=surface["lat_grid"].tolist(),
+        lon_grid=surface["lon_grid"].tolist(),
+        density_grid=surface["density_grid"].tolist(),
+    )
+
+
+@app.get("/api/model-info", response_model=ModelInfoResponse, tags=["ML Prediction"])
+def get_ml_model_info(service: CrimeRiskService = Depends(get_ml_service)):
+    """Returns champion Random Forest metadata, hyperparameters, and frozen risk thresholds."""
+    return ModelInfoResponse(
+        api_version=API_VERSION,
+        model_name=service.model_name,
+        model_type=service.metadata.get("model_type", "sklearn.ensemble.RandomForestRegressor"),
+        model_version=service.model_version,
+        feature_count=len(service.feature_names),
+        feature_names=service.feature_names,
+        hyperparameters=service.metadata.get("hyperparameters", {}),
+        risk_thresholds={
+            "low_threshold_q25": service.thresholds["low_threshold_q25"],
+            "median_threshold_q50": service.thresholds["median_threshold_q50"],
+            "high_threshold_q75": service.thresholds["high_threshold_q75"],
+            "categories": service.thresholds_payload.get("categories", ["Low", "Moderate", "High", "Very High"]),
+            "boundary_rules": service.thresholds_payload.get("boundary_rules", {}),
+        },
+        historical_data_range={
+            "start_date": str(service.min_historical_date),
+            "end_date": str(service.max_historical_date),
+        },
     )
 
 

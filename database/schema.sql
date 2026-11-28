@@ -69,26 +69,31 @@ CREATE INDEX IF NOT EXISTS idx_hotspots_centroid ON hotspots (representative_lat
 
 -- -----------------------------------------------------------------------------
 -- Table C: predictions
--- Stores future prospective crime risk inference outputs produced by ML pipeline
+-- Stores both supervised ML Community Area forecasts and spatial proximity queries
 -- -----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS predictions (
     id BIGSERIAL PRIMARY KEY,
-    query_latitude DOUBLE PRECISION NOT NULL,
-    query_longitude DOUBLE PRECISION NOT NULL,
+    prediction_type VARCHAR(32) NOT NULL DEFAULT 'spatial_proximity', -- 'ml_forecast' or 'spatial_proximity'
+    community_area INTEGER,                            -- Chicago Community Area (1 to 77) for ML forecasts
+    query_latitude DOUBLE PRECISION,                   -- Nullable: used by coordinate spatial proximity queries
+    query_longitude DOUBLE PRECISION,                  -- Nullable: used by coordinate spatial proximity queries
     target_prediction_timestamp TIMESTAMP WITH TIME ZONE NOT NULL,
     horizon_hours INTEGER DEFAULT 24,                  -- Prediction lookahead interval
-    predicted_risk_tier VARCHAR(32) NOT NULL,          -- e.g. 'LOW', 'MODERATE', 'HIGH'
+    predicted_risk_tier VARCHAR(128) NOT NULL,         -- 'Low', 'Moderate', 'High', 'Very High' or spatial tier
     predicted_risk_score DOUBLE PRECISION,             -- Calibrated probability [0.0, 1.0]
     predicted_crime_count DOUBLE PRECISION,            -- Expected count from regression model
+    is_historical BOOLEAN,                             -- Whether ML query used historical feature store
+    historical_actual_count DOUBLE PRECISION,          -- Recorded ground truth for historical ML queries
     nearest_hotspot_id INTEGER REFERENCES hotspots(id) ON DELETE SET NULL,
     distance_to_hotspot_km DOUBLE PRECISION,
     model_name VARCHAR(64) NOT NULL,
-    model_version VARCHAR(32) NOT NULL,
+    model_version VARCHAR(32),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_predictions_timestamp ON predictions (target_prediction_timestamp);
 CREATE INDEX IF NOT EXISTS idx_predictions_coords ON predictions (query_latitude, query_longitude);
+CREATE INDEX IF NOT EXISTS idx_predictions_area_type ON predictions (prediction_type, community_area);
 
 
 -- -----------------------------------------------------------------------------

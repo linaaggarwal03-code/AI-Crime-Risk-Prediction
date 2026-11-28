@@ -3,8 +3,13 @@
 data/*.csv
 *.csv
 !outputs/*.csv
-data/processed/
 *.parquet
+data/processed/*
+!data/processed/train_features.parquet
+!data/processed/val_features.parquet
+!data/processed/test_features.parquet
+!data/processed/hotspot_clusters.parquet
+!data/processed/kde_density_grid.npz
 
 # Python
 __pycache__/

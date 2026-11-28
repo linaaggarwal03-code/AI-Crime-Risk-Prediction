@@ -66,8 +66,8 @@ def test_predict_risk_provisional_endpoint():
     response = client.post("/api/predict-risk", json=payload)
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == "PROVISIONAL_SPATIAL_PROXIMITY_ONLY"
-    assert data["model_integration_status"] == "PENDING_LINA_SUPERVISED_MODEL_EXPORT"
+    assert data["status"] == "SPATIAL_PROXIMITY_ONLY"
+    assert data["model_integration_status"] == "SEPARATE_ML_ENDPOINT_ACTIVE"
     assert "nearest_hotspot" in data
     assert "distance_to_hotspot_km" in data
     assert "disclaimer" in data
@@ -100,3 +100,90 @@ def test_prediction_history_endpoint():
     assert data["database_backend"] in ("SQLite", "PostgreSQL")
     assert "history" in data
     assert len(data["history"]) >= 1
+
+
+def test_ml_health_live_and_ready():
+    live = client.get("/health/live")
+    assert live.status_code == 200
+    assert live.json() == {"status": "alive"}
+
+    ready = client.get("/health/ready")
+    assert ready.status_code == 200
+    data = ready.json()
+    assert data["status"] == "ready"
+    assert data["historical_store_records"] == 166474
+    assert all(data["checks"].values())
+
+
+def test_ml_areas_and_model_info():
+    areas = client.get("/api/areas")
+    assert areas.status_code == 200
+    assert areas.json()["total_areas"] == 77
+
+    info = client.get("/api/model-info")
+    assert info.status_code == 200
+    data = info.json()
+    assert data["feature_count"] == 34
+    assert data["risk_thresholds"]["categories"] == ["Low", "Moderate", "High", "Very High"]
+
+
+def test_ml_predict_historical_and_future_guard():
+    # Historical prediction via CrimeRiskService
+    res = client.post("/api/predict", json={"community_area": 8, "date": "2024-06-15"})
+    assert res.status_code == 200
+    data = res.json()
+    assert data["query"]["is_historical"] is True
+    assert data["prediction"]["predicted_crime_count"] >= 0.0
+    assert data["prediction"]["risk_tier"] in ["Low", "Moderate", "High", "Very High"]
+    assert data["context"]["historical_actual_count"] is not None
+
+    # Future prediction without 30-day history must return 422
+    future_res = client.post("/api/predict", json={"community_area": 8, "date": "2026-06-01"})
+    assert future_res.status_code == 422
+
+
+def test_ml_area_hotspots_and_kde():
+    hs = client.get("/api/hotspots/32?limit=5")
+    assert hs.status_code == 200
+    hs_data = hs.json()
+    assert hs_data["community_area"] == 32
+    assert hs_data["total_matching_clusters"] == 6
+
+    kde = client.get("/api/kde")
+    assert kde.status_code == 200
+    kde_data = kde.json()
+    assert kde_data["grid_size"] == 50
+    assert len(kde_data["density_grid"]) == 50
+
+
+def test_ml_predict_persists_and_retrieves_history():
+    res = client.post("/api/predict", json={"community_area": 8, "date": "2024-06-15"})
+    assert res.status_code == 200
+
+    hist = client.get("/api/prediction-history?prediction_type=ml_forecast&limit=5")
+    assert hist.status_code == 200
+    data = hist.json()
+    assert data["total_returned"] >= 1
+    latest = data["history"][0]
+    assert latest["prediction_type"] == "ml_forecast"
+    assert latest["community_area"] == 8
+    assert latest["latitude"] is None
+    assert latest["longitude"] is None
+    assert latest["predicted_crime_count"] is not None
+    assert latest["risk_tier"] in ["Low", "Moderate", "High", "Very High"]
+
+
+def test_ml_predict_survives_database_failure(monkeypatch):
+    from backend.main import get_cached_data
+
+    db = get_cached_data().get("db")
+    if db is not None:
+        monkeypatch.setattr(
+            db,
+            "save_ml_prediction",
+            lambda **kwargs: (_ for _ in ()).throw(RuntimeError("Simulated DB failure")),
+        )
+
+    res = client.post("/api/predict", json={"community_area": 32, "date": "2024-06-15"})
+    assert res.status_code == 200
+    assert res.json()["prediction"]["predicted_crime_count"] >= 0.0

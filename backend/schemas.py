@@ -76,14 +76,19 @@ class PredictionResponse(BaseModel):
 
 class PredictionHistoryItem(BaseModel):
     id: int
-    latitude: float
-    longitude: float
+    prediction_type: str = "spatial_proximity"
+    community_area: Optional[int] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
     target_timestamp: str
     risk_tier: str
+    predicted_crime_count: Optional[float] = None
+    is_historical: Optional[bool] = None
+    historical_actual_count: Optional[float] = None
     nearest_cluster_id: Optional[int] = None
     distance_to_hotspot_km: Optional[float] = None
     model_name: str
-    model_version: str
+    model_version: Optional[str] = None
     created_at: str
 
 

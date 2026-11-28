@@ -21,11 +21,21 @@ ANALYSIS_SUMMARY_PATH = OUTPUTS_DIR / "analysis_summary.json"
 PARAMETER_EXPERIMENTS_PATH = OUTPUTS_DIR / "parameter_experiments.csv"
 SPATIAL_TEMPORAL_PATH = OUTPUTS_DIR / "spatial_temporal_summary.json"
 
-# CORS configuration
-CORS_ORIGINS = [
+# CORS configuration (configurable via CORS_ALLOWED_ORIGINS env var, no wildcard default)
+DEFAULT_CORS_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:3001",
+    "http://localhost:5173",
+    "http://localhost:8000",
     "http://127.0.0.1:3000",
     "http://127.0.0.1:3001",
-    "*",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:8000",
 ]
+
+_env_cors = os.getenv("CORS_ALLOWED_ORIGINS")
+CORS_ORIGINS = (
+    [origin.strip() for origin in _env_cors.split(",") if origin.strip()]
+    if _env_cors
+    else DEFAULT_CORS_ORIGINS
+)
